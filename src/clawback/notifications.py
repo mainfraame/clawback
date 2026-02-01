@@ -2,11 +2,9 @@
 Notification system for Congressional Trade Bot
 Supports Telegram notifications for trade alerts
 """
-import json
 import logging
+
 import requests
-from datetime import datetime
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 

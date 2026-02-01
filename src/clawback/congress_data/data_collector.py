@@ -5,11 +5,9 @@ Fetches trade data from official government sources
 import json
 import logging
 import os
-import time
 from datetime import datetime, timedelta
+
 import requests
-from bs4 import BeautifulSoup
-import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -301,13 +299,13 @@ class CongressDataCollector:
                         continue
 
                     try:
-                        with open(filepath, 'r') as f:
+                        with open(filepath) as f:
                             trades = json.load(f)
 
                         # Convert date strings back to datetime objects
                         for trade in trades:
                             for key in ["transaction_date", "filing_date"]:
-                                if key in trade and trade[key]:
+                                if trade.get(key):
                                     try:
                                         trade[key] = datetime.fromisoformat(trade[key].replace('Z', '+00:00'))
                                     except (ValueError, AttributeError):

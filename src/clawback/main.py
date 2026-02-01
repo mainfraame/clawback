@@ -5,30 +5,32 @@ https://github.com/openclaw/clawback
 """
 import json
 import logging
+import os
+import sys
 import time
-import schedule
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
-import sys
-import os
 
-from .config_loader import load_config
+import schedule
+
 from .broker_adapter import get_broker_adapter
+from .config_loader import load_config
 from .congress_tracker import CongressTracker
-from .trade_engine import TradeEngine
-from .database import get_database, TradingDatabase
+from .database import get_database
 from .telegram_notifier import TelegramNotifier
+from .trade_engine import TradeEngine
+
 
 # Configure logging
 def setup_logging(config):
     """Configure logging based on config"""
     log_level = getattr(logging, config['logging']['level'].upper())
-    
+
     # Create logs directory if it doesn't exist
     log_dir = os.path.dirname(config['logging']['file'])
     if log_dir and not os.path.exists(log_dir):
         os.makedirs(log_dir)
-    
+
     logging.basicConfig(
         level=log_level,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -37,11 +39,11 @@ def setup_logging(config):
             logging.StreamHandler(sys.stdout)
         ]
     )
-    
+
     # Reduce verbosity for some libraries
     logging.getLogger('requests').setLevel(logging.WARNING)
     logging.getLogger('urllib3').setLevel(logging.WARNING)
-    
+
     return logging.getLogger(__name__)
 
 class TradingBot:
@@ -118,7 +120,7 @@ class TradingBot:
         token_file = '.access_tokens.json'
         if os.path.exists(token_file):
             try:
-                with open(token_file, 'r') as f:
+                with open(token_file) as f:
                     tokens = json.load(f)
                 if tokens.get('access_token'):
                     self.broker.set_tokens(
@@ -172,7 +174,7 @@ class TradingBot:
         except Exception as e:
             self.logger.error(f"Error refreshing token: {e}")
             return False
-    
+
     def authenticate(self, verifier_code=None):
         """Authenticate with broker"""
         self.logger.info(f"Starting {self.broker.BROKER_NAME} authentication...")
@@ -209,7 +211,7 @@ class TradingBot:
         else:
             self.logger.error("Authentication failed")
             return False
-    
+
     def check_for_new_disclosures(self):
         """Check for new congressional disclosures and queue for trading"""
         try:
@@ -345,21 +347,21 @@ class TradingBot:
         """Update last check time in memory and database"""
         self.last_check_time = datetime.now()
         self.db.set_state('last_check_time', self.last_check_time.isoformat())
-    
+
     def run_once(self):
         """Run one complete check and trade cycle"""
         if not self.manual_mode:
             self.logger.info("Starting single trading cycle...")
-        
+
         # Check if authenticated
         if not self.broker.is_authenticated:
             self.logger.error("Not authenticated. Please run authenticate() first.")
             return False
-        
+
         # Run trading cycle
         self.check_and_process_trades()
         return True
-    
+
     def run_scheduled(self):
         """Run on a schedule based on disclosure check times and market hours"""
         self.logger.info("Starting scheduled trading bot")
@@ -413,7 +415,7 @@ class TradingBot:
         # Convert to local time
         local_datetime = et_datetime.astimezone(local_tz)
         return local_datetime.strftime('%H:%M')
-    
+
     def get_status(self):
         """Get current bot status"""
         status = {
@@ -450,18 +452,18 @@ class TradingBot:
             account_balance=account_balance,
             is_authenticated=self.broker.is_authenticated
         )
-    
+
     def emergency_stop(self):
         """Emergency stop - cancel all pending orders and stop trading"""
         self.logger.warning("EMERGENCY STOP ACTIVATED")
         self.is_running = False
         self.manual_mode = True
-        
+
         # Note: In production, you'd want to actually cancel pending orders
         # This would require additional E*TRADE API calls
-        
+
         self.logger.info("Trading stopped. Manual mode enabled.")
-    
+
     def interactive_mode(self):
         """Interactive mode for testing and manual control"""
         self.logger.info("Entering interactive mode")
@@ -542,10 +544,10 @@ class TradingBot:
                 print(f"  Total trades discovered: {stats['total_discovered']}")
                 print(f"  Trades executed: {stats['total_executed']}")
                 print(f"  Total value traded: ${stats['total_value_traded']:,.2f}")
-                print(f"\n  By chamber:")
+                print("\n  By chamber:")
                 for chamber, count in stats.get('by_chamber', {}).items():
                     print(f"    {chamber or 'house'}: {count}")
-                print(f"\n  Top tickers:")
+                print("\n  Top tickers:")
                 for ticker, count in stats.get('top_tickers', [])[:5]:
                     print(f"    {ticker}: {count} trades")
             elif choice == '7':
@@ -575,7 +577,7 @@ class TradingBot:
                         total_pnl += p['unrealized_pnl']
                     print(f"  {'-'*75}")
                     print(f"  Total Unrealized P/L: ${total_pnl:,.2f}")
-                    print(f"  * = Trailing stop active")
+                    print("  * = Trailing stop active")
 
             elif choice == '9':
                 # Run stop-loss check
@@ -601,7 +603,7 @@ class TradingBot:
                     print(f"  Open Positions:   {risk['open_positions']}")
                     print(f"  Consecutive Loss: {risk['consecutive_losses']}")
                     if risk['warnings']:
-                        print(f"\n  WARNINGS:")
+                        print("\n  WARNINGS:")
                         for w in risk['warnings']:
                             print(f"    ⚠️  {w}")
 
@@ -632,17 +634,17 @@ def main():
     """Main entry point"""
     print("\n🦞 ClawBack - Congressional Trade Mirror")
     print("="*50)
-    
+
     # Check for config file
     config_path = 'config/config.json'
     if not os.path.exists(config_path):
         print(f"Error: Config file not found at {config_path}")
         print("Please ensure config.json exists in the config directory")
         return
-    
+
     # Create bot instance
     bot = TradingBot(config_path)
-    
+
     # Check command line arguments
     if len(sys.argv) > 1:
         if sys.argv[1] == 'auth':

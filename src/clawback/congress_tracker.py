@@ -6,16 +6,16 @@ Fetches and processes public trade disclosures from:
 """
 import json
 import logging
-import requests
 import re
-from datetime import datetime, timedelta
 import time
-from bs4 import BeautifulSoup
-import pandas as pd
-from io import BytesIO
-from zipfile import ZipFile
 import xml.etree.ElementTree as ET
+from datetime import datetime, timedelta
+from io import BytesIO
 from urllib.parse import urljoin
+from zipfile import ZipFile
+
+import requests
+from bs4 import BeautifulSoup
 
 try:
     import pdfplumber
@@ -25,11 +25,11 @@ except ImportError:
 
 try:
     from selenium import webdriver
-    from selenium.webdriver.common.by import By
-    from selenium.webdriver.support.ui import WebDriverWait
-    from selenium.webdriver.support import expected_conditions as EC
     from selenium.webdriver.chrome.options import Options
     from selenium.webdriver.chrome.service import Service
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.support import expected_conditions as EC
+    from selenium.webdriver.support.ui import WebDriverWait
     from webdriver_manager.chrome import ChromeDriverManager
     HAS_SELENIUM = True
 except ImportError:
@@ -42,12 +42,13 @@ class CongressTracker:
 
     def __init__(self, config):
         self.config = config
-        self.data_source = config['congress']['dataSource']
-        self.min_trade_size = config['congress']['minimumTradeSize']
-        self.trade_types = config['congress']['tradeTypes']
+        congress_config = config.get('congress', {})
+        self.data_source = congress_config.get('dataSource', 'both')
+        self.min_trade_size = congress_config.get('minimumTradeSize', 1000)
+        self.trade_types = congress_config.get('tradeTypes', ['purchase', 'sale'])
 
         # Configurable target politicians (default: Pelosi)
-        self.target_politicians = config.get('congress', {}).get('targetPoliticians', [
+        self.target_politicians = congress_config.get('targetPoliticians', [
             {'name': 'Nancy Pelosi', 'chamber': 'house'}
         ])
 
@@ -59,7 +60,7 @@ class CongressTracker:
         self.last_fetch_time = None
 
         logger.info("Initialized congressional trade tracker")
-    
+
     def fetch_house_clerk_data(self):
         """Fetch data from official House Clerk disclosures (free, official source)"""
         try:
@@ -81,7 +82,7 @@ class CongressTracker:
             with ZipFile(BytesIO(response.content)) as zf:
                 xml_filename = f"{year}FD.xml"
                 if xml_filename not in zf.namelist():
-                    logger.error(f"XML file not found in ZIP")
+                    logger.error("XML file not found in ZIP")
                     return []
                 xml_content = zf.read(xml_filename)
 
@@ -191,9 +192,7 @@ class CongressTracker:
                 for i, h in enumerate(headers):
                     if 'asset' in h or 'description' in h:
                         col_map['asset'] = i
-                    elif 'type' in h and 'transaction' not in h:
-                        col_map['tx_type'] = i
-                    elif 'transaction' in h and 'type' in h:
+                    elif ('type' in h and 'transaction' not in h) or ('transaction' in h and 'type' in h):
                         col_map['tx_type'] = i
                     elif 'date' in h and 'notification' not in h:
                         col_map['date'] = i
@@ -540,7 +539,7 @@ class CongressTracker:
                     end_input = driver.find_element(By.ID, "toDate")
                     end_input.clear()
                     end_input.send_keys(end_date)
-                except:
+                except Exception:
                     logger.debug("Date fields not found, using defaults")
 
                 # Submit search
@@ -616,7 +615,7 @@ class CongressTracker:
                             time.sleep(2)
                         else:
                             break
-                    except:
+                    except Exception:
                         break  # No more pages
 
             except Exception as e:
@@ -1044,7 +1043,7 @@ class CongressTracker:
         try:
             # Remove currency symbols and whitespace
             amount_str = amount_str.replace('$', '').replace(',', '').strip()
-            
+
             # Handle ranges (take the midpoint)
             if '-' in amount_str:
                 parts = amount_str.split('-')
@@ -1056,7 +1055,7 @@ class CongressTracker:
         except ValueError:
             logger.warning(f"Could not parse amount: {amount_str}")
             return 0
-    
+
     def get_recent_trades(self, days=30):
         """Get recent trades within specified days"""
         try:
@@ -1090,11 +1089,11 @@ class CongressTracker:
                 logger.warning("Using mock data for testing")
                 trades = self.fetch_mock_data()
                 all_trades.extend(trades)
-            
+
             # Filter by date (if date parsing works)
             recent_trades = []
             cutoff_date = datetime.now() - timedelta(days=days)
-            
+
             for trade in all_trades:
                 try:
                     # Try to parse date
@@ -1105,20 +1104,20 @@ class CongressTracker:
                 except (ValueError, KeyError):
                     # If date parsing fails, include anyway
                     recent_trades.append(trade)
-            
+
             # Remove duplicates (same ticker, similar date, same type)
             unique_trades = self._deduplicate_trades(recent_trades)
-            
+
             self.recent_trades = unique_trades
             self.last_fetch_time = datetime.now()
-            
+
             logger.info(f"Total unique recent trades: {len(unique_trades)}")
             return unique_trades
-            
+
         except Exception as e:
             logger.error(f"Error getting recent trades: {e}")
             return []
-    
+
     def _parse_date(self, date_str):
         """Parse various date formats"""
         if not date_str:
@@ -1178,34 +1177,34 @@ class CongressTracker:
         # If all fail, return current date
         logger.warning(f"Could not parse date: {date_str}")
         return datetime.now()
-    
+
     def _deduplicate_trades(self, trades):
         """Remove duplicate trades"""
         unique_trades = []
         seen_keys = set()
-        
+
         for trade in trades:
             # Create a unique key
             key = f"{trade.get('ticker', '')}_{trade.get('transaction_date', '')}_{trade.get('transaction_type', '')}"
-            
+
             if key not in seen_keys:
                 seen_keys.add(key)
                 unique_trades.append(trade)
-        
+
         return unique_trades
-    
+
     def get_trades_since(self, last_check_date):
         """Get trades since last check date"""
         all_trades = self.get_recent_trades(days=90)  # Get 90 days to be safe
-        
+
         new_trades = []
         for trade in all_trades:
             trade_date = trade.get('parsed_date')
             if trade_date and trade_date > last_check_date:
                 new_trades.append(trade)
-        
+
         return new_trades
-    
+
     def save_trades_to_file(self, trades, filename='pelosi_trades.json'):
         """Save trades to JSON file for analysis"""
         try:
@@ -1216,31 +1215,31 @@ class CongressTracker:
                 if 'parsed_date' in trade_copy:
                     trade_copy['parsed_date'] = trade_copy['parsed_date'].isoformat()
                 serializable_trades.append(trade_copy)
-            
+
             with open(filename, 'w') as f:
                 json.dump(serializable_trades, f, indent=2)
-            
+
             logger.info(f"Saved {len(trades)} trades to {filename}")
             return True
-            
+
         except Exception as e:
             logger.error(f"Error saving trades to file: {e}")
             return False
-    
+
     def load_trades_from_file(self, filename='pelosi_trades.json'):
         """Load trades from JSON file"""
         try:
-            with open(filename, 'r') as f:
+            with open(filename) as f:
                 data = json.load(f)
-            
+
             # Convert date strings back to datetime objects
             for trade in data:
-                if 'parsed_date' in trade and trade['parsed_date']:
+                if trade.get('parsed_date'):
                     trade['parsed_date'] = datetime.fromisoformat(trade['parsed_date'])
-            
+
             logger.info(f"Loaded {len(data)} trades from {filename}")
             return data
-            
+
         except (FileNotFoundError, json.JSONDecodeError) as e:
             logger.warning(f"Could not load trades from file: {e}")
             return []

@@ -6,11 +6,11 @@ Supports two modes:
 2. Standalone mode: Uses direct Telegram Bot API when running independently
 """
 import logging
-import json
 import os
 import shutil
 import subprocess
 from datetime import datetime
+
 import requests
 
 logger = logging.getLogger(__name__)
@@ -47,7 +47,7 @@ class TelegramNotifier:
         else:
             self.mode = None
             logger.info("Telegram notifier disabled")
-    
+
     def send_message(self, message, parse_mode='Markdown'):
         """Send a message to Telegram"""
         if not self.enabled:
@@ -111,19 +111,19 @@ class TelegramNotifier:
         except Exception as e:
             logger.error(f"Error sending Telegram message: {e}")
             return False
-    
+
     def send_trade_alert(self, trade_action, details):
         """Send trade execution alert"""
         if not self.config.get('sendTradeAlerts', True):
             return False
-        
+
         symbol = details.get('symbol', 'Unknown')
         action = trade_action.upper()
         quantity = details.get('quantity', 0)
         price = details.get('price', 0)
         total = details.get('total', 0)
         reason = details.get('reason', '')
-        
+
         message = f"""
 🚀 *TRADE EXECUTED* 🚀
 
@@ -133,9 +133,9 @@ class TelegramNotifier:
 *Total:* ${total:.2f}
 *Reason:* {reason}
 """
-        
+
         return self.send_message(message.strip())
-    
+
     def send_congressional_alert(self, trade):
         """Send congressional trade alert"""
         politician = trade.get('politician', 'Unknown')
@@ -143,7 +143,7 @@ class TelegramNotifier:
         action = trade.get('transaction_type', '').upper()
         amount = trade.get('amount', 0)
         date = trade.get('transaction_date', '')
-        
+
         message = f"""
 📊 *CONGRESSIONAL TRADE ALERT* 📊
 
@@ -152,9 +152,9 @@ class TelegramNotifier:
 *Amount:* ${amount:,.2f}
 *Trade Date:* {date}
 """
-        
+
         return self.send_message(message.strip())
-    
+
     def send_error_alert(self, error_type, error_message, context=""):
         """Send generic error alert"""
         if not self.config.get('sendErrorAlerts', True):
@@ -240,20 +240,20 @@ class TelegramNotifier:
 """
 
         return self.send_message(message.strip())
-    
+
     def send_daily_summary(self, summary_data):
         """Send daily trading summary"""
         if not self.config.get('sendDailySummary', True):
             return False
-        
+
         date = summary_data.get('date', datetime.now().astimezone().strftime('%Y-%m-%d'))
         trades_made = summary_data.get('trades_made', 0)
         total_volume = summary_data.get('total_volume', 0)
         pnl = summary_data.get('pnl', 0)
         account_balance = summary_data.get('account_balance', 0)
-        
+
         pnl_emoji = "📈" if pnl >= 0 else "📉"
-        
+
         message = f"""
 📋 *DAILY TRADING SUMMARY* 📋
 
@@ -263,9 +263,9 @@ class TelegramNotifier:
 *Daily P&L:* {pnl_emoji} ${pnl:,.2f}
 *Account Balance:* ${account_balance:,.2f}
 """
-        
+
         return self.send_message(message.strip())
-    
+
     def send_test_message(self, broker_name=None, account_balance=None, is_authenticated=False):
         """Send test message to verify setup with actual system state"""
         # Format broker display name (escape markdown special chars)

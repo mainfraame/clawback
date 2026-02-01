@@ -5,11 +5,10 @@ Includes trailing stop-loss and risk management features
 """
 import json
 import logging
+import os
 import time
 from datetime import datetime, time as dt_time, timedelta
-from decimal import Decimal, ROUND_DOWN
-import math
-import os
+from decimal import ROUND_DOWN, Decimal
 from zoneinfo import ZoneInfo
 
 logger = logging.getLogger(__name__)
@@ -92,10 +91,11 @@ class TradeEngine:
         self.config = config
 
         # Trading parameters
-        self.trade_scale = Decimal(str(config['trading'].get('tradeScalePercentage', 0.05)))
-        self.max_position_pct = Decimal(str(config['trading'].get('maxPositionPercentage', 0.05)))
-        self.max_positions = config['trading'].get('maxPositions', 20)
-        self.daily_loss_limit = Decimal(str(config['trading'].get('dailyLossLimit', 0.03)))
+        trading_config = config.get('trading', {})
+        self.trade_scale = Decimal(str(trading_config.get('tradeScalePercentage', 0.05)))
+        self.max_position_pct = Decimal(str(trading_config.get('maxPositionPercentage', 0.05)))
+        self.max_positions = trading_config.get('maxPositions', 20)
+        self.daily_loss_limit = Decimal(str(trading_config.get('dailyLossLimit', 0.03)))
 
         # Risk management parameters
         risk_config = config.get('riskManagement', {})
@@ -127,7 +127,7 @@ class TradeEngine:
         self._load_positions()
 
         logger.info("Initialized trade engine with risk management")
-    
+
     def _parse_time(self, time_str):
         """Parse time string like '09:30' to time object"""
         try:
@@ -136,7 +136,7 @@ class TradeEngine:
         except (ValueError, AttributeError):
             logger.warning(f"Invalid time format: {time_str}, using default 09:30")
             return dt_time(9, 30)
-    
+
     def is_market_open(self):
         """Check if current time is within NYSE market hours"""
         if not self.market_hours_only:
@@ -183,7 +183,7 @@ class TradeEngine:
         now = datetime.now(next_open.tzinfo)
         delta = next_open - now
         return max(0, delta.total_seconds())
-    
+
     def calculate_scaled_trade(self, congress_trade, account_balance):
         """
         Calculate scaled trade based on congressional trade amount
@@ -193,31 +193,31 @@ class TradeEngine:
             symbol = congress_trade['ticker'].upper()
             action = 'BUY' if congress_trade['transaction_type'] == 'purchase' else 'SELL'
             congress_amount = Decimal(str(congress_trade['amount']))
-            
+
             # Get current quote for price
             quote = self.broker.get_quote(symbol)
             if not quote:
                 logger.warning(f"No quote available for {symbol}")
                 return None
-            
+
             current_price = Decimal(str(quote['last_price']))
-            
+
             # Calculate target investment amount
             # Scale congressional trade by configured percentage
             target_amount = account_balance * self.trade_scale
-            
+
             # Calculate quantity (round down to whole shares)
             quantity = (target_amount / current_price).quantize(Decimal('1.'), rounding=ROUND_DOWN)
-            
+
             # Ensure minimum of 1 share
             if quantity < 1:
                 logger.info(f"Target amount too small for {symbol}: ${target_amount:.2f} at ${current_price:.2f}")
                 return None
-            
+
             estimated_cost = quantity * current_price
-            
+
             logger.info(f"Calculated trade: {action} {quantity} shares of {symbol} at ~${current_price:.2f} (${estimated_cost:.2f})")
-            
+
             return {
                 'symbol': symbol,
                 'quantity': int(quantity),
@@ -227,61 +227,60 @@ class TradeEngine:
                 'congress_amount': float(congress_amount),
                 'scale_factor': float(self.trade_scale)
             }
-            
+
         except Exception as e:
             logger.error(f"Error calculating scaled trade: {e}")
             return None
-    
+
     def check_position_limits(self, symbol, quantity, action, account_value):
         """Check if trade violates position limits"""
         try:
             # Get current positions
             positions = self.broker.get_positions()
-            
+
             # Find existing position for this symbol
             current_position = 0
             for pos in positions:
                 if pos['symbol'] == symbol:
                     current_position = pos['quantity']
-                    current_value = pos['market_value']
                     break
-            
+
             # Calculate new position
             if action == 'BUY':
                 new_position = current_position + quantity
             else:  # SELL
                 new_position = current_position - quantity
-            
+
             # Get current quote for value calculation
             quote = self.broker.get_quote(symbol)
             if not quote:
                 logger.warning(f"No quote for {symbol}, skipping limit check")
                 return True
-            
+
             current_price = Decimal(str(quote['last_price']))
             position_value = abs(new_position) * current_price
-            
+
             # Check max position percentage
             max_position_value = account_value * self.max_position_pct
-            
+
             if position_value > max_position_value:
                 logger.warning(
                     f"Position limit exceeded: ${position_value:.2f} > ${max_position_value:.2f} "
                     f"({float(self.max_position_pct)*100:.1f}% of account)"
                 )
                 return False
-            
+
             # Check if selling more than owned
             if action == 'SELL' and quantity > current_position:
                 logger.warning(f"Attempting to sell {quantity} shares but only own {current_position}")
                 return False
-            
+
             return True
-            
+
         except Exception as e:
             logger.error(f"Error checking position limits: {e}")
             return False
-    
+
     def check_daily_loss_limit(self):
         """Check if daily loss limit has been exceeded"""
         # Note: This is a simplified check
@@ -290,7 +289,7 @@ class TradeEngine:
             logger.error(f"Daily loss limit exceeded: ${self.daily_pnl:.2f}")
             return False
         return True
-    
+
     def execute_trade(self, trade_calculation):
         """Execute a calculated trade"""
         try:
@@ -298,20 +297,20 @@ class TradeEngine:
             if not self.is_market_open():
                 logger.warning("Market is closed, skipping trade execution")
                 return False
-            
+
             # Check daily loss limit
             if not self.check_daily_loss_limit():
                 logger.warning("Daily loss limit exceeded, skipping trade")
                 return False
-            
+
             # Get account balance for limit checks
             balance_info = self.broker.get_account_balance()
             if not balance_info:
                 logger.error("Could not get account balance")
                 return False
-            
+
             account_value = Decimal(str(balance_info['total_value']))
-            
+
             # Check position limits
             if not self.check_position_limits(
                 trade_calculation['symbol'],
@@ -321,7 +320,7 @@ class TradeEngine:
             ):
                 logger.warning("Trade violates position limits")
                 return False
-            
+
             # Prepare order details
             order_details = {
                 'symbol': trade_calculation['symbol'],
@@ -330,13 +329,16 @@ class TradeEngine:
                 'price_type': 'MARKET',  # Start with market orders
                 'order_type': 'EQ'
             }
-            
+
             # Execute order
+            if not self.broker.account_id:
+                logger.error("No account ID configured - cannot place order")
+                return False
             success = self.broker.place_order(
                 self.broker.account_id,
                 order_details
             )
-            
+
             if success:
                 # Record trade
                 trade_record = {
@@ -374,11 +376,11 @@ class TradeEngine:
             else:
                 logger.error("Failed to execute trade")
                 return False
-                
+
         except Exception as e:
             logger.error(f"Error executing trade: {e}")
             return False
-    
+
     def process_congressional_trades(self, congress_trades):
         """Process multiple congressional trades"""
         try:
@@ -387,59 +389,59 @@ class TradeEngine:
             if not balance_info:
                 logger.error("Could not get account balance")
                 return []
-            
+
             account_balance = Decimal(str(balance_info['cash_available']))
             logger.info(f"Processing trades with account balance: ${account_balance:.2f}")
-            
+
             executed_trades = []
-            
+
             for congress_trade in congress_trades:
                 # Calculate scaled trade
                 trade_calc = self.calculate_scaled_trade(congress_trade, account_balance)
-                
+
                 if not trade_calc:
                     continue
-                
+
                 # Execute trade
                 if self.execute_trade(trade_calc):
                     executed_trades.append(trade_calc)
-                    
+
                     # Update account balance for next calculation
                     # This is approximate - real balance would update after trade
                     account_balance -= Decimal(str(trade_calc['estimated_cost']))
-                    
+
                     # Small delay between trades
                     time.sleep(2)
-            
+
             logger.info(f"Executed {len(executed_trades)} trades")
             return executed_trades
-            
+
         except Exception as e:
             logger.error(f"Error processing congressional trades: {e}")
             return []
-    
+
     def save_trade_history(self, filename='trade_history.json'):
         """Save trade history to file"""
         try:
             with open(filename, 'w') as f:
                 json.dump(self.trade_history, f, indent=2, default=str)
-            
+
             logger.info(f"Saved {len(self.trade_history)} trades to {filename}")
             return True
-            
+
         except Exception as e:
             logger.error(f"Error saving trade history: {e}")
             return False
-    
+
     def load_trade_history(self, filename='trade_history.json'):
         """Load trade history from file"""
         try:
-            with open(filename, 'r') as f:
+            with open(filename) as f:
                 self.trade_history = json.load(f)
-            
+
             logger.info(f"Loaded {len(self.trade_history)} trades from {filename}")
             return True
-            
+
         except (FileNotFoundError, json.JSONDecodeError):
             logger.warning(f"Could not load trade history from {filename}")
             self.trade_history = []
@@ -447,7 +449,7 @@ class TradeEngine:
         except Exception as e:
             logger.error(f"Error loading trade history: {e}")
             return False
-    
+
     def get_trade_summary(self):
         """Get summary of trading activity"""
         total_trades = len(self.trade_history)
@@ -474,7 +476,7 @@ class TradeEngine:
         positions_file = 'data/positions.json'
         try:
             if os.path.exists(positions_file):
-                with open(positions_file, 'r') as f:
+                with open(positions_file) as f:
                     data = json.load(f)
                 for symbol, pos_data in data.items():
                     self.positions[symbol] = Position.from_dict(pos_data)
@@ -657,7 +659,7 @@ class TradeEngine:
             if hold_duration >= target_hold:
                 try:
                     quote = self.broker.get_quote(symbol)
-                    current_price = quote['last_price'] if quote else pos.entry_price
+                    current_price = quote.get('last_price', pos.entry_price) if quote else pos.entry_price
 
                     to_sell.append({
                         'symbol': symbol,
@@ -685,9 +687,7 @@ class TradeEngine:
             total_value = Decimal(str(balance['total_value']))
 
             # Track peak value for drawdown
-            if self.peak_portfolio_value is None:
-                self.peak_portfolio_value = total_value
-            elif total_value > self.peak_portfolio_value:
+            if self.peak_portfolio_value is None or total_value > self.peak_portfolio_value:
                 self.peak_portfolio_value = total_value
 
             # Calculate drawdown

@@ -4,7 +4,6 @@ Uses the adapter pattern for broker-agnostic integration
 """
 import json
 import logging
-import os
 import sys
 import time
 from datetime import datetime, timedelta
@@ -66,7 +65,7 @@ class BrokerIntegration:
         """Load configuration from file"""
         try:
             full_path = Path(__file__).parent / config_path
-            with open(full_path, 'r') as f:
+            with open(full_path) as f:
                 return json.load(f)
         except Exception as e:
             logger.error(f"Error loading config {config_path}: {e}")
@@ -77,7 +76,7 @@ class BrokerIntegration:
         try:
             state_file = self.notifications_dir / "processed_alerts.json"
             if state_file.exists():
-                with open(state_file, 'r') as f:
+                with open(state_file) as f:
                     data = json.load(f)
                     self.processed_alerts = set(data.get("processed_alerts", []))
 
@@ -141,7 +140,7 @@ class BrokerIntegration:
 
                 # Load alert data
                 try:
-                    with open(alert_file, 'r') as f:
+                    with open(alert_file) as f:
                         alert_data = json.load(f)
 
                     # Check if it's a congressional trade alert
@@ -290,7 +289,7 @@ class BrokerIntegration:
 
             if latest_file.exists():
                 try:
-                    with open(latest_file, 'r') as f:
+                    with open(latest_file) as f:
                         recommendations = json.load(f)
                 except json.JSONDecodeError:
                     recommendations = []
@@ -337,7 +336,7 @@ class BrokerIntegration:
             if not latest_file.exists():
                 return []
 
-            with open(latest_file, 'r') as f:
+            with open(latest_file) as f:
                 recommendations = json.load(f)
 
             # Filter by ticker if specified
@@ -445,7 +444,7 @@ def main():
         # Get integration statistics
         stats = integration.get_integration_stats()
 
-        print(f"\n📈 Broker Integration Statistics:")
+        print("\n📈 Broker Integration Statistics:")
         print("="*60)
         print(f"Broker Adapter: {stats['broker']}")
         print(f"Processed Alerts: {stats['processed_alerts']}")

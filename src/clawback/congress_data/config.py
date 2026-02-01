@@ -4,6 +4,7 @@ Configuration for congressional trade data collection
 import json
 import os
 
+
 class CongressConfig:
     """Configuration for congressional trade data collection"""
 
@@ -69,7 +70,7 @@ class CongressConfig:
         """Load configuration from file or use defaults"""
         try:
             if os.path.exists(self.config_path):
-                with open(self.config_path, 'r') as f:
+                with open(self.config_path) as f:
                     loaded_config = json.load(f)
 
                 # Merge with defaults

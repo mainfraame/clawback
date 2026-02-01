@@ -2,10 +2,11 @@
 ClawBack - E*TRADE Broker Adapter
 Implementation of BrokerAdapter for E*TRADE API
 """
-import time
 import logging
-from typing import Dict, List, Optional, Any
+import time
+from typing import Any, Dict, List, Optional
 from urllib.parse import quote, unquote
+
 import requests
 from requests_oauthlib import OAuth1
 
@@ -106,7 +107,11 @@ class ETradeAdapter(BrokerAdapter):
             response = requests.post(self.OAUTH_URLS['request_token'], auth=oauth)
 
             if response.status_code == 200:
-                credentials = dict(pair.split('=') for pair in response.text.split('&'))
+                credentials = {}
+                for pair in response.text.split('&'):
+                    if '=' in pair:
+                        key, value = pair.split('=', 1)
+                        credentials[key] = value
                 self.request_token = unquote(credentials.get('oauth_token', ''))
                 self.request_secret = unquote(credentials.get('oauth_token_secret', ''))
                 logger.info(f"Got request token: {self.request_token[:20]}...")
@@ -476,7 +481,7 @@ class ETradeAdapter(BrokerAdapter):
                 preview_ids = data.get('PreviewOrderResponse', {}).get('PreviewIds', [])
 
                 if preview_ids:
-                    preview_id = preview_ids[0].get('previewId')
+                    # preview_id available in preview_ids[0].get('previewId') if needed
 
                     # Place the order
                     place_url = f"{self.BASE_URL}/v1/accounts/{account_key}/orders/place.json"

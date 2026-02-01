@@ -1,7 +1,7 @@
 # ClawBack - OpenClaw Skill Makefile
 # Usage: make help
 
-.PHONY: help install setup test clean bump-patch bump-minor bump-major release publish
+.PHONY: help install setup test clean bump-patch bump-minor bump-major release publish lint lint-fix
 
 # Default registry (use www to avoid redirect issues)
 CLAWHUB_REGISTRY ?= https://www.clawhub.ai
@@ -63,9 +63,15 @@ test: ## Run tests (if any)
 	@echo "$(CYAN)Running tests...$(NC)"
 	python3 -m pytest tests/ -v 2>/dev/null || echo "$(YELLOW)No tests found$(NC)"
 
-lint: ## Run linter
+lint: ## Run linter (ruff)
 	@echo "$(CYAN)Running linter...$(NC)"
-	python3 -m flake8 src/clawback/ --max-line-length=120 2>/dev/null || echo "$(YELLOW)flake8 not installed$(NC)"
+	@ruff check src/clawback/ || (echo "$(RED)Linting failed! Fix errors before release.$(NC)" && exit 1)
+	@echo "$(GREEN)Linting passed!$(NC)"
+
+lint-fix: ## Run linter and auto-fix issues
+	@echo "$(CYAN)Running linter with auto-fix...$(NC)"
+	ruff check src/clawback/ --fix
+	@echo "$(GREEN)Done!$(NC)"
 
 clean: ## Clean build artifacts
 	@echo "$(CYAN)Cleaning...$(NC)"
@@ -156,7 +162,7 @@ publish-dry: ## Dry run of publish (show what would happen)
 # Combined Commands (Ship = bump + release + publish)
 # ============================================================================
 
-ship-patch: ## Bump patch, commit, tag, push, publish - ALL IN ONE
+ship-patch: lint ## Bump patch, commit, tag, push, publish - ALL IN ONE
 	@echo "$(CYAN)========================================$(NC)"
 	@echo "$(CYAN)  Shipping patch release$(NC)"
 	@echo "$(CYAN)========================================$(NC)"
@@ -192,7 +198,7 @@ ship-patch: ## Bump patch, commit, tag, push, publish - ALL IN ONE
 	echo "$(GREEN)  Shipped $(SKILL_SLUG)@$$NEW_VER$(NC)"; \
 	echo "$(GREEN)========================================$(NC)"
 
-ship-minor: ## Bump minor, commit, tag, push, publish - ALL IN ONE
+ship-minor: lint ## Bump minor, commit, tag, push, publish - ALL IN ONE
 	@echo "$(CYAN)========================================$(NC)"
 	@echo "$(CYAN)  Shipping minor release$(NC)"
 	@echo "$(CYAN)========================================$(NC)"
@@ -228,7 +234,7 @@ ship-minor: ## Bump minor, commit, tag, push, publish - ALL IN ONE
 	echo "$(GREEN)  Shipped $(SKILL_SLUG)@$$NEW_VER$(NC)"; \
 	echo "$(GREEN)========================================$(NC)"
 
-ship-major: ## Bump major, commit, tag, push, publish - ALL IN ONE
+ship-major: lint ## Bump major, commit, tag, push, publish - ALL IN ONE
 	@echo "$(CYAN)========================================$(NC)"
 	@echo "$(CYAN)  Shipping major release$(NC)"
 	@echo "$(CYAN)========================================$(NC)"

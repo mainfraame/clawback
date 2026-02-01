@@ -2,13 +2,13 @@
 Backtesting engine for congressional trading strategies
 Tests various entry timing, position sizing, and filtering strategies
 """
-import json
 import logging
-import requests
-from datetime import datetime, timedelta
-from dataclasses import dataclass
-from typing import List, Dict, Optional
 import time
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional
+
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -408,7 +408,7 @@ class CongressionalBacktester:
             print(f"  Max Drawdown: {best.max_drawdown*100:.1f}%")
 
             if best.trades_detail:
-                print(f"\n  Top 5 Trades:")
+                print("\n  Top 5 Trades:")
                 top_trades = sorted(best.trades_detail, key=lambda t: t['return'], reverse=True)[:5]
                 for t in top_trades:
                     print(f"    {t['ticker']:6} {t['return']*100:>7.1f}%  ({t['representative'][:25]})")
@@ -478,19 +478,25 @@ def fetch_historical_trades() -> List[Trade]:
                 disc_date_str = item.get('disclosure_date', '')
 
                 # Try multiple date formats
+                tx_date = None
                 for fmt in ['%Y-%m-%d', '%m/%d/%Y', '%Y/%m/%d']:
                     try:
                         tx_date = datetime.strptime(tx_date_str, fmt)
                         break
-                    except:
-                        tx_date = datetime.now() - timedelta(days=30)
+                    except ValueError:
+                        continue
+                if tx_date is None:
+                    tx_date = datetime.now() - timedelta(days=30)
 
+                disc_date = None
                 for fmt in ['%Y-%m-%d', '%m/%d/%Y', '%Y/%m/%d']:
                     try:
                         disc_date = datetime.strptime(disc_date_str, fmt)
                         break
-                    except:
-                        disc_date = tx_date + timedelta(days=30)
+                    except ValueError:
+                        continue
+                if disc_date is None:
+                    disc_date = tx_date + timedelta(days=30)
 
                 # Parse amount
                 amount_str = item.get('amount', '$0')
@@ -511,7 +517,7 @@ def fetch_historical_trades() -> List[Trade]:
                 )
                 trades.append(trade)
 
-            except Exception as e:
+            except Exception:
                 continue
 
         logger.info(f"Loaded {len(trades)} historical trades from House Stock Watcher")
@@ -532,7 +538,7 @@ def parse_amount(amount_str: str) -> float:
             high = float(parts[1].strip())
             return (low + high) / 2
         return float(amount_str)
-    except:
+    except (ValueError, IndexError, AttributeError):
         return 0
 
 

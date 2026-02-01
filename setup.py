@@ -11,7 +11,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="clawback",
-    version="1.0.14",
+    version="1.0.15",
     author="Dayne",
     author_email="",
     description="Mirror congressional stock trades with automated broker execution",
@@ -48,8 +48,7 @@ setup(
         "dev": [
             "pytest>=7.0.0",
             "pytest-cov>=4.0.0",
-            "black>=23.0.0",
-            "flake8>=6.0.0",
+            "ruff>=0.3.0",
         ],
     },
     entry_points={

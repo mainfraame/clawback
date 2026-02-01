@@ -3,11 +3,10 @@ ClawBack - Configuration Loader
 Reads configuration with support for environment variables and secrets management
 """
 import json
+import logging
 import os
 import re
-import logging
-from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 logger = logging.getLogger(__name__)
 
@@ -172,7 +171,7 @@ def setup_config_interactive():
 
     # Load and update config with environment
     if os.path.exists(config_path):
-        with open(config_path, 'r') as f:
+        with open(config_path) as f:
             config = json.load(f)
         config['broker']['environment'] = environment
         with open(config_path, 'w') as f:
@@ -199,7 +198,7 @@ def setup_config_interactive():
         with open('.auth_state.json', 'w') as f:
             json.dump(auth_state, f)
 
-        print(f"\n   Please visit this URL to authorize:")
+        print("\n   Please visit this URL to authorize:")
         print(f"   {auth_url}")
         print()
         verifier = input("   Enter verification code: ").strip()

@@ -1,10 +1,9 @@
 """
 SQLite database for tracking trades, executions, and bot state
 """
-import sqlite3
 import json
 import logging
-import os
+import sqlite3
 from datetime import datetime
 from pathlib import Path
 
@@ -131,7 +130,7 @@ class TradingDatabase:
             return
 
         try:
-            with open(SEED_DATA_PATH, 'r') as f:
+            with open(SEED_DATA_PATH) as f:
                 seed_data = json.load(f)
 
             trades = seed_data.get('trades', [])
@@ -434,7 +433,7 @@ class TradingDatabase:
                 if result.get('expires_at'):
                     try:
                         result['expires_at'] = datetime.fromisoformat(result['expires_at'])
-                    except:
+                    except (ValueError, TypeError):
                         pass
                 return result
             return None

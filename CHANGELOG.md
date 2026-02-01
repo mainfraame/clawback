@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.0.15] - 2026-02-01
+
+### Fixed
+- **CLI import fix**: Changed `from main import TradingBot` to `from clawback.main import TradingBot`
+- **CLI method call fix**: Use correct `interactive_mode()` method instead of `run()`
+- **Python 3.9 compatibility**: Fixed `tuple[bool, str]` type hint to use `Tuple[bool, str]`
+- **Config safety**: Added `.get()` with defaults for congress_tracker, trade_engine config access
+- **OAuth parsing**: Safer parsing of OAuth response in etrade_adapter
+- **Account validation**: Check account_id exists before placing orders
+- **Quote access**: Safe access to quote dict with `.get()` fallback
+- **Date parsing logic**: Fixed backtester date format loop to only set fallback after all formats fail
+- **Bare except cleanup**: Replaced all bare `except:` with specific exception types
+
 ## [1.0.14] - 2026-02-01
 
 ### Changed

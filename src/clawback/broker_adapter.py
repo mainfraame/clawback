@@ -2,9 +2,9 @@
 ClawBack - Broker Adapter Interface
 Abstract base class defining the common interface for all broker adapters
 """
-from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Any
 import logging
+from abc import ABC, abstractmethod
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +72,6 @@ class BrokerAdapter(ABC):
         Returns:
             Authorization URL string, or None if OAuth is not required/failed
         """
-        pass
 
     @abstractmethod
     def authenticate(self, verifier_code: str) -> bool:
@@ -85,7 +84,6 @@ class BrokerAdapter(ABC):
         Returns:
             True if authentication succeeded, False otherwise
         """
-        pass
 
     def renew_access_token(self) -> bool:
         """
@@ -143,7 +141,6 @@ class BrokerAdapter(ABC):
                 - accountType: Type of account (e.g., 'BROKERAGE', 'IRA')
                 - accountName: Display name (optional)
         """
-        pass
 
     @abstractmethod
     def get_account_balance(self, account_id: Optional[str] = None) -> Optional[Dict[str, float]]:
@@ -160,7 +157,6 @@ class BrokerAdapter(ABC):
                 - raw_data: Full balance response from broker
             Returns None on error
         """
-        pass
 
     @abstractmethod
     def get_positions(self, account_id: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -178,7 +174,6 @@ class BrokerAdapter(ABC):
                 - market_value: Current market value
                 - current_price: Current price per share
         """
-        pass
 
     @abstractmethod
     def get_quote(self, symbol: str) -> Optional[Dict[str, Any]]:
@@ -198,7 +193,6 @@ class BrokerAdapter(ABC):
                 - timestamp: Quote timestamp
             Returns None on error
         """
-        pass
 
     @abstractmethod
     def place_order(self, account_id: str, order_details: Dict[str, Any]) -> bool:
@@ -217,7 +211,6 @@ class BrokerAdapter(ABC):
         Returns:
             True if order placed successfully, False otherwise
         """
-        pass
 
     @abstractmethod
     def get_order_status(self, account_id: str, order_id: str) -> Optional[Dict[str, Any]]:
@@ -231,9 +224,8 @@ class BrokerAdapter(ABC):
         Returns:
             Order status dictionary, or None on error
         """
-        pass
 
-    def validate_order(self, order_details: Dict[str, Any]) -> tuple[bool, str]:
+    def validate_order(self, order_details: Dict[str, Any]) -> Tuple[bool, str]:
         """
         Validate order details before placement.
 
