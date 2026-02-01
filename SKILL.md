@@ -1,22 +1,11 @@
 ---
 name: clawback
 description: Mirror congressional stock trades with automated broker execution and risk management. Use when you want to track and automatically trade based on congressional disclosures from House Clerk and Senate eFD sources.
-version: 1.0.1
+version: 1.0.2
 author: mainfraame
 homepage: https://github.com/mainfraame/clawback
 user-invocable: true
-metadata:
-  openclaw:
-    emoji: "🦀"
-    requires:
-      bins:
-        - python3
-        - pip
-      config:
-        - channels.telegram.botToken
-    install:
-      pip: "{baseDir}"
-    primaryEnv: BROKER_API_KEY
+metadata: {"openclaw": {"emoji": "🦀", "requires": {"bins": ["python3", "pip"]}, "install": {"pip": "{baseDir}"}, "primaryEnv": "BROKER_API_KEY"}}
 ---
 
 # ClawBack

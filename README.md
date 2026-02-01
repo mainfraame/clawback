@@ -91,10 +91,21 @@ cd ~/.openclaw/skills/clawback
 
 ## Quick Start
 
-### Option 1: Standard Installation
+### Option 1: Standard Installation (Recommended)
 ```bash
 cd clawback
-pip3 install -r requirements.txt
+
+# Install with fixed CLI
+pip3 install -e .
+
+# Install fixed CLI wrapper
+./install_fixed_cli.sh
+
+# Run setup
+clawback-fixed setup
+
+# Or with alias (add to ~/.zshrc: alias clawback='clawback-fixed')
+clawback setup
 ```
 
 ### Option 2: OpenClaw Skill Installation
@@ -146,6 +157,28 @@ python3 src/main.py interactive
 - **Congressional Data System**: [docs/CONGRESSIONAL_DATA.md](docs/CONGRESSIONAL_DATA.md)
 - **Skill Documentation**: [SKILL.md](SKILL.md)
 
+## Fixed CLI Improvements (v1.0.2)
+
+Version 1.0.2 includes significant improvements to the CLI:
+
+### Key Improvements:
+1. **Simplified Config Path**: Always uses `~/.clawback/config.json` (no more multi-path confusion)
+2. **OpenClaw Integration**: Option to use OpenClaw's built-in Telegram channel
+3. **Better Error Handling**: Clear error messages for missing configuration
+4. **Robust Setup Wizard**: Interactive setup with better guidance
+5. **Consistent Behavior**: Same behavior whether run from repo or installed
+
+### Installation:
+```bash
+# From repository
+cd clawback
+./install_fixed_cli.sh
+
+# Or manually create alias
+echo "alias clawback='clawback-fixed'" >> ~/.zshrc
+source ~/.zshrc
+```
+
 ## Monitoring & Maintenance
 
 ### Logs:
@@ -179,6 +212,6 @@ ClawBack uses an adapter pattern for broker integration. Currently only E*TRADE 
 
 ---
 
-**Version**: 1.0.1
-**Last Updated**: January 2026
+**Version**: 1.0.2
+**Last Updated**: February 2026
 **Compatibility**: Python 3.8+
