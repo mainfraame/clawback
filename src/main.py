@@ -8,6 +8,7 @@ import logging
 import time
 import schedule
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 import sys
 import os
 
@@ -66,9 +67,15 @@ class TradingBot:
 
         self.logger.info(f"Using broker adapter: {self.broker.BROKER_NAME}")
 
+        # Timezone for scheduling (default: NYSE timezone)
+        schedule_config = self.config.get('schedule', {})
+        self.schedule_timezone = ZoneInfo(schedule_config.get('timezone', 'America/New_York'))
+        self.disclosure_check_times = schedule_config.get('disclosureCheckTimes', ['10:00', '14:00', '18:00'])
+
         # State
         self.is_running = False
         self.manual_mode = False
+        self.pending_trades = []  # Trades waiting for market open
 
         # Load last check time from database
         last_check = self.db.get_state('last_check_time')
@@ -78,6 +85,7 @@ class TradingBot:
         self._load_saved_tokens()
 
         self.logger.info("Trading bot initialized with SQLite database")
+        self.logger.info(f"Disclosure checks scheduled at: {', '.join(self.disclosure_check_times)} ET")
 
     def _load_saved_tokens(self):
         """Load saved access tokens if available"""
@@ -130,10 +138,10 @@ class TradingBot:
             self.logger.error("Authentication failed")
             return False
     
-    def check_and_process_trades(self):
-        """Main trading loop: check for new congressional trades and execute"""
+    def check_for_new_disclosures(self):
+        """Check for new congressional disclosures and queue for trading"""
         try:
-            self.logger.info("Checking for new congressional trades...")
+            self.logger.info("Checking for new congressional disclosures...")
 
             # Determine cutoff time (last check or 7 days ago)
             if self.last_check_time:
@@ -145,7 +153,7 @@ class TradingBot:
             all_trades = self.congress_tracker.get_trades_since(cutoff_time)
 
             if not all_trades:
-                self.logger.info("No new congressional trades found")
+                self.logger.info("No new congressional disclosures found")
                 self._update_last_check_time()
                 return
 
@@ -161,7 +169,7 @@ class TradingBot:
                 self._update_last_check_time()
                 return
 
-            self.logger.info(f"Found {len(new_trades)} new congressional trades")
+            self.logger.info(f"Found {len(new_trades)} new congressional disclosures")
 
             # Log by chamber
             house_trades = [t for t in new_trades if t.get('chamber') != 'senate']
@@ -174,30 +182,6 @@ class TradingBot:
             # Save trades for reference
             self.congress_tracker.save_trades_to_file(new_trades, 'recent_congressional_trades.json')
 
-            # Process and execute trades
-            executed_trades = self.trade_engine.process_congressional_trades(new_trades)
-
-            if executed_trades:
-                self.logger.info(f"Successfully executed {len(executed_trades)} trades")
-
-                # Record executed trades in database
-                for exec_trade in executed_trades:
-                    self.db.add_executed_trade(
-                        congressional_trade_id=None,  # Would need to link properly
-                        ticker=exec_trade.get('symbol', ''),
-                        action=exec_trade.get('action', ''),
-                        quantity=exec_trade.get('quantity', 0),
-                        price=exec_trade.get('price', 0),
-                        total_value=exec_trade.get('total_value', 0),
-                        order_id=exec_trade.get('order_id', ''),
-                        status=exec_trade.get('status', 'unknown')
-                    )
-
-                # Save trade history
-                self.trade_engine.save_trade_history()
-            else:
-                self.logger.info("No trades were executed")
-
             # Update last check time
             self._update_last_check_time()
 
@@ -206,10 +190,61 @@ class TradingBot:
             if self.congress_tracker.include_senate:
                 self.db.set_last_fetch_time('senate_efd')
 
+            # Queue trades for execution
+            self.pending_trades.extend(new_trades)
+            self.logger.info(f"Queued {len(new_trades)} trades for execution")
+
+            # Try to execute if market is open
+            self.execute_pending_trades()
+
         except Exception as e:
-            self.logger.error(f"Error in trading loop: {e}")
+            self.logger.error(f"Error checking disclosures: {e}")
             import traceback
             traceback.print_exc()
+
+    def execute_pending_trades(self):
+        """Execute pending trades if market is open"""
+        if not self.pending_trades:
+            return
+
+        if not self.trade_engine.is_market_open():
+            next_open = self.trade_engine.get_next_market_open()
+            self.logger.info(f"Market closed. {len(self.pending_trades)} trades queued for {next_open.strftime('%Y-%m-%d %H:%M %Z')}")
+            return
+
+        self.logger.info(f"Market open. Executing {len(self.pending_trades)} pending trades...")
+
+        # Process and execute trades
+        executed_trades = self.trade_engine.process_congressional_trades(self.pending_trades)
+
+        if executed_trades:
+            self.logger.info(f"Successfully executed {len(executed_trades)} trades")
+
+            # Record executed trades in database
+            for exec_trade in executed_trades:
+                self.db.add_executed_trade(
+                    congressional_trade_id=None,
+                    ticker=exec_trade.get('symbol', ''),
+                    action=exec_trade.get('action', ''),
+                    quantity=exec_trade.get('quantity', 0),
+                    price=exec_trade.get('price', 0),
+                    total_value=exec_trade.get('total_value', 0),
+                    order_id=exec_trade.get('order_id', ''),
+                    status=exec_trade.get('status', 'unknown')
+                )
+
+            # Save trade history
+            self.trade_engine.save_trade_history()
+        else:
+            self.logger.info("No trades were executed")
+
+        # Clear pending trades
+        self.pending_trades = []
+
+    def check_and_process_trades(self):
+        """Main trading loop: check for new congressional trades and execute"""
+        self.check_for_new_disclosures()
+        self.execute_pending_trades()
 
     def _update_last_check_time(self):
         """Update last check time in memory and database"""
@@ -230,30 +265,55 @@ class TradingBot:
         self.check_and_process_trades()
         return True
     
-    def run_scheduled(self, interval_hours=24):
-        """Run on a schedule"""
-        self.logger.info(f"Starting scheduled trading bot (checking every {interval_hours} hours)")
-        
+    def run_scheduled(self):
+        """Run on a schedule based on disclosure check times and market hours"""
+        self.logger.info("Starting scheduled trading bot")
+        self.logger.info(f"Disclosure checks at: {', '.join(self.disclosure_check_times)} ET")
+        self.logger.info(f"Market hours: {self.config['trading']['marketOpen']} - {self.config['trading']['marketClose']} ET")
+
         if not self.broker.is_authenticated:
             self.logger.error("Not authenticated. Please run authenticate() first.")
             return False
 
-        # Schedule the trading check
-        schedule.every(interval_hours).hours.do(self.check_and_process_trades)
-        
-        # Also run immediately
-        self.check_and_process_trades()
-        
+        # Schedule disclosure checks at configured times (in ET)
+        for check_time in self.disclosure_check_times:
+            # Convert ET time to local time for scheduling
+            local_time = self._et_to_local_time(check_time)
+            schedule.every().day.at(local_time).do(self.check_for_new_disclosures)
+            self.logger.info(f"  Scheduled disclosure check at {local_time} local ({check_time} ET)")
+
+        # Schedule market open execution check (9:35 AM ET - 5 min after open)
+        market_open_local = self._et_to_local_time("09:35")
+        schedule.every().day.at(market_open_local).do(self.execute_pending_trades)
+        self.logger.info(f"  Scheduled market open execution at {market_open_local} local (09:35 ET)")
+
+        # Run initial check
+        self.check_for_new_disclosures()
+
         self.is_running = True
-        
+
         try:
             while self.is_running:
                 schedule.run_pending()
-                time.sleep(60)  # Check every minute
-                
+                time.sleep(60)  # Check scheduler every minute
+
         except KeyboardInterrupt:
             self.logger.info("Shutting down scheduled bot...")
             self.is_running = False
+
+    def _et_to_local_time(self, time_str):
+        """Convert Eastern Time string (HH:MM) to local time string"""
+        hour, minute = map(int, time_str.split(':'))
+        et_tz = ZoneInfo('America/New_York')
+        local_tz = datetime.now().astimezone().tzinfo
+
+        # Create a datetime in ET for today
+        now = datetime.now(et_tz)
+        et_datetime = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+
+        # Convert to local time
+        local_datetime = et_datetime.astimezone(local_tz)
+        return local_datetime.strftime('%H:%M')
     
     def get_status(self):
         """Get current bot status"""
@@ -309,7 +369,7 @@ class TradingBot:
             print("  9. Run stop-loss check")
             print(" 10. Check portfolio risk")
             print("  ─────────── Automation ───────────")
-            print(" 11. Start scheduled trading")
+            print(f" 11. Start scheduled trading (checks at {', '.join(self.disclosure_check_times)} ET)")
             print(" 12. Export database to JSON")
             print(" 13. Emergency stop")
             print("  0. Exit")
@@ -432,9 +492,11 @@ class TradingBot:
                             print(f"    ⚠️  {w}")
 
             elif choice == '11':
-                interval = input("Check interval (hours, default 24): ").strip()
-                interval_hours = int(interval) if interval.isdigit() else 24
-                self.run_scheduled(interval_hours)
+                print(f"\nScheduled check times: {', '.join(self.disclosure_check_times)} ET")
+                print("Trades execute at market open (9:35 AM ET)")
+                confirm = input("Start scheduled trading? (y/n): ").strip().lower()
+                if confirm == 'y':
+                    self.run_scheduled()
 
             elif choice == '12':
                 filepath = input("Export path (default: data/export.json): ").strip() or 'data/export.json'
@@ -475,8 +537,7 @@ def main():
         elif sys.argv[1] == 'run':
             bot.run_once()
         elif sys.argv[1] == 'schedule':
-            interval = int(sys.argv[2]) if len(sys.argv) > 2 else 24
-            bot.run_scheduled(interval)
+            bot.run_scheduled()
         elif sys.argv[1] == 'interactive':
             bot.interactive_mode()
         elif sys.argv[1] == 'status':

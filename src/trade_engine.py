@@ -10,6 +10,7 @@ from datetime import datetime, time as dt_time, timedelta
 from decimal import Decimal, ROUND_DOWN
 import math
 import os
+from zoneinfo import ZoneInfo
 
 logger = logging.getLogger(__name__)
 
@@ -109,8 +110,9 @@ class TradeEngine:
         self.entry_delay_days = strategy_config.get('entryDelayDays', 3)
         self.holding_period_days = strategy_config.get('holdingPeriodDays', 30)
 
-        # Market hours
+        # Market hours (NYSE operates in America/New_York timezone)
         self.market_hours_only = config['trading'].get('marketHoursOnly', True)
+        self.market_timezone = ZoneInfo(config['trading'].get('marketTimezone', 'America/New_York'))
         self.market_open = self._parse_time(config['trading'].get('marketOpen', '09:30'))
         self.market_close = self._parse_time(config['trading'].get('marketClose', '16:00'))
 
@@ -136,19 +138,51 @@ class TradeEngine:
             return dt_time(9, 30)
     
     def is_market_open(self):
-        """Check if current time is within market hours"""
+        """Check if current time is within NYSE market hours"""
         if not self.market_hours_only:
             return True
-        
-        now = datetime.now()
-        current_time = now.time()
-        
+
+        # Get current time in market timezone (NYSE = America/New_York)
+        now_market = datetime.now(self.market_timezone)
+        current_time = now_market.time()
+
         # Check if weekday (Mon-Fri)
-        if now.weekday() >= 5:  # 5 = Saturday, 6 = Sunday
+        if now_market.weekday() >= 5:  # 5 = Saturday, 6 = Sunday
             return False
-        
+
         # Check time
         return self.market_open <= current_time <= self.market_close
+
+    def get_next_market_open(self):
+        """Get the next market open time as a datetime in local timezone"""
+        now_market = datetime.now(self.market_timezone)
+        local_tz = datetime.now().astimezone().tzinfo
+
+        # Start with today's market open
+        next_open = now_market.replace(
+            hour=self.market_open.hour,
+            minute=self.market_open.minute,
+            second=0,
+            microsecond=0
+        )
+
+        # If market already opened today, move to tomorrow
+        if now_market.time() >= self.market_open:
+            next_open += timedelta(days=1)
+
+        # Skip weekends
+        while next_open.weekday() >= 5:
+            next_open += timedelta(days=1)
+
+        # Convert to local timezone for scheduling
+        return next_open.astimezone(local_tz)
+
+    def seconds_until_market_open(self):
+        """Get seconds until next market open"""
+        next_open = self.get_next_market_open()
+        now = datetime.now(next_open.tzinfo)
+        delta = next_open - now
+        return max(0, delta.total_seconds())
     
     def calculate_scaled_trade(self, congress_trade, account_balance):
         """

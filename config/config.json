@@ -18,8 +18,13 @@
     "tradeDelayDays": 3,
     "holdingPeriodDays": 30,
     "marketHoursOnly": true,
+    "marketTimezone": "America/New_York",
     "marketOpen": "09:30",
     "marketClose": "16:00"
+  },
+  "schedule": {
+    "disclosureCheckTimes": ["10:00", "14:00", "18:00"],
+    "timezone": "America/New_York"
   },
   "strategy": {
     "entryDelayDays": 3,
