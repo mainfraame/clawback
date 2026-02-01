@@ -1,0 +1,28 @@
+# Development files - not needed for installed skill
+Makefile.mk
+VERSION.txt
+scripts/bump-version.sh
+
+# Git/IDE
+.git/
+.gitignore
+.idea/
+.claude/
+.vscode/
+
+# Python build artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+build/
+dist/
+venv/
+
+# Test files
+tests/
+pytest.ini
+.pytest_cache/
+
+# Local config (users create their own)
+.env
