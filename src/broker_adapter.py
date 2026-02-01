@@ -32,6 +32,32 @@ class BrokerAdapter(ABC):
         """
         self.config = config
         self._authenticated = False
+        self._error_callback = None  # Callback for error notifications
+
+    def set_error_callback(self, callback):
+        """
+        Set a callback function for error notifications.
+
+        Args:
+            callback: Function that accepts (operation: str, error: str, details: dict)
+        """
+        self._error_callback = callback
+
+    def _notify_error(self, operation: str, error: str, details: dict = None):
+        """
+        Notify about an error via the registered callback.
+
+        Args:
+            operation: Name of the operation that failed
+            error: Error message
+            details: Additional error details
+        """
+        logger.error(f"Broker error in {operation}: {error}")
+        if self._error_callback:
+            try:
+                self._error_callback(operation, error, details or {})
+            except Exception as e:
+                logger.error(f"Error in error callback: {e}")
 
     @property
     def is_authenticated(self) -> bool:

@@ -20,6 +20,7 @@ from broker_adapter import get_broker_adapter  # Broker adapter factory
 from congress_tracker import CongressTracker
 from trade_engine import TradeEngine
 from database import get_database, TradingDatabase
+from telegram_notifier import TelegramNotifier
 
 # Configure logging
 def setup_logging(config):
@@ -60,10 +61,16 @@ class TradingBot:
         db_path = self.config.get('database', {}).get('path', 'data/trading.db')
         self.db = get_database(db_path)
 
+        # Initialize Telegram notifier
+        self.notifier = TelegramNotifier(self.config.get('notifications', {}))
+
         # Initialize components using adapter pattern
         self.broker = get_broker_adapter(self.config)
         self.congress_tracker = CongressTracker(self.config)
         self.trade_engine = TradeEngine(self.broker, self.config)
+
+        # Wire up broker error notifications to Telegram
+        self.broker.set_error_callback(self._handle_broker_error)
 
         self.logger.info(f"Using broker adapter: {self.broker.BROKER_NAME}")
 
@@ -86,6 +93,15 @@ class TradingBot:
 
         self.logger.info("Trading bot initialized with SQLite database")
         self.logger.info(f"Disclosure checks scheduled at: {', '.join(self.disclosure_check_times)} ET")
+
+    def _handle_broker_error(self, operation: str, error: str, details: dict = None):
+        """Handle broker API errors by sending Telegram notification"""
+        self.logger.error(f"Broker error - {operation}: {error}")
+        self.notifier.send_broker_error(operation, error, details)
+
+    def _get_local_timestamp(self):
+        """Get current timestamp formatted in local timezone"""
+        return datetime.now().astimezone().strftime('%Y-%m-%d %H:%M:%S %Z')
 
     def _load_saved_tokens(self):
         """Load saved access tokens if available"""
@@ -150,7 +166,21 @@ class TradingBot:
                 cutoff_time = datetime.now() - timedelta(days=7)
 
             # Get new trades since last check
-            all_trades = self.congress_tracker.get_trades_since(cutoff_time)
+            try:
+                all_trades = self.congress_tracker.get_trades_since(cutoff_time)
+            except Exception as fetch_error:
+                # Send Telegram alert for disclosure fetch failure
+                error_msg = str(fetch_error)
+                self.logger.error(f"Failed to fetch disclosures: {error_msg}")
+                self.notifier.send_disclosure_error(
+                    source="House Clerk / Senate eFD",
+                    error_message=error_msg,
+                    details={
+                        "cutoff_time": cutoff_time.strftime('%Y-%m-%d %H:%M'),
+                        "include_senate": self.congress_tracker.include_senate
+                    }
+                )
+                return
 
             if not all_trades:
                 self.logger.info("No new congressional disclosures found")
@@ -194,11 +224,20 @@ class TradingBot:
             self.pending_trades.extend(new_trades)
             self.logger.info(f"Queued {len(new_trades)} trades for execution")
 
+            # Send Telegram alerts for new congressional trades
+            for trade in new_trades[:5]:  # Limit to first 5 to avoid spam
+                self.notifier.send_congressional_alert(trade)
+
             # Try to execute if market is open
             self.execute_pending_trades()
 
         except Exception as e:
-            self.logger.error(f"Error checking disclosures: {e}")
+            error_msg = str(e)
+            self.logger.error(f"Error checking disclosures: {error_msg}")
+            self.notifier.send_disclosure_error(
+                source="Disclosure Check",
+                error_message=error_msg
+            )
             import traceback
             traceback.print_exc()
 

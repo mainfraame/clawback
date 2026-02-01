@@ -9,6 +9,11 @@ import requests
 
 logger = logging.getLogger(__name__)
 
+
+def get_local_timestamp():
+    """Get current timestamp formatted in local timezone"""
+    return datetime.now().astimezone().strftime('%Y-%m-%d %H:%M:%S %Z')
+
 class TelegramNotifier:
     """Sends Telegram notifications for trading activities"""
     
@@ -72,7 +77,7 @@ class TelegramNotifier:
 *Total:* ${total:.2f}
 *Reason:* {reason}
 
-*Time:* {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+*Time:* {get_local_timestamp()}
 """
         
         return self.send_message(message.strip())
@@ -93,25 +98,99 @@ class TelegramNotifier:
 *Amount:* ${amount:,.2f}
 *Date:* {date}
 
-*Time Detected:* {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+*Time Detected:* {get_local_timestamp()}
 """
         
         return self.send_message(message.strip())
     
     def send_error_alert(self, error_type, error_message, context=""):
-        """Send error alert"""
+        """Send generic error alert"""
         if not self.config.get('sendErrorAlerts', True):
             return False
-        
+
         message = f"""
 ⚠️ *SYSTEM ERROR* ⚠️
 
 *Type:* {error_type}
 *Error:* {error_message}
 *Context:* {context}
-*Time:* {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+*Time:* {get_local_timestamp()}
 """
-        
+
+        return self.send_message(message.strip())
+
+    def send_broker_error(self, operation, error_message, details=None):
+        """Send broker API error alert"""
+        if not self.config.get('sendErrorAlerts', True):
+            return False
+
+        details_text = ""
+        if details:
+            if isinstance(details, dict):
+                details_text = "\n".join([f"  • {k}: {v}" for k, v in details.items()])
+            else:
+                details_text = str(details)
+
+        message = f"""
+🚨 *BROKER API ERROR* 🚨
+
+*Operation:* {operation}
+*Error:* `{error_message}`
+{f"*Details:*{chr(10)}{details_text}" if details_text else ""}
+*Broker:* E\\*TRADE
+*Time:* {get_local_timestamp()}
+
+⚡ _Action may be required_ ⚡
+"""
+
+        return self.send_message(message.strip())
+
+    def send_disclosure_error(self, source, error_message, details=None):
+        """Send disclosure poll error alert"""
+        if not self.config.get('sendErrorAlerts', True):
+            return False
+
+        source_emoji = "🏛️" if source.lower() == "house" else "🏛️" if source.lower() == "senate" else "📊"
+
+        details_text = ""
+        if details:
+            if isinstance(details, dict):
+                details_text = "\n".join([f"  • {k}: {v}" for k, v in details.items()])
+            else:
+                details_text = str(details)
+
+        message = f"""
+{source_emoji} *DISCLOSURE POLL FAILED* {source_emoji}
+
+*Source:* {source}
+*Error:* `{error_message}`
+{f"*Details:*{chr(10)}{details_text}" if details_text else ""}
+*Time:* {get_local_timestamp()}
+
+📋 _Will retry at next scheduled check_
+"""
+
+        return self.send_message(message.strip())
+
+    def send_market_status(self, status, pending_trades=0):
+        """Send market status notification"""
+        if status == "closed":
+            message = f"""
+🌙 *MARKET CLOSED*
+
+*Pending Trades:* {pending_trades}
+*Next Action:* Execute at market open (9:35 AM ET)
+*Time:* {get_local_timestamp()}
+"""
+        else:
+            message = f"""
+☀️ *MARKET OPEN*
+
+*Status:* Trading enabled
+*Pending Trades:* {pending_trades}
+*Time:* {get_local_timestamp()}
+"""
+
         return self.send_message(message.strip())
     
     def send_daily_summary(self, summary_data):
@@ -119,7 +198,7 @@ class TelegramNotifier:
         if not self.config.get('sendDailySummary', True):
             return False
         
-        date = summary_data.get('date', datetime.now().strftime('%Y-%m-%d'))
+        date = summary_data.get('date', datetime.now().astimezone().strftime('%Y-%m-%d'))
         trades_made = summary_data.get('trades_made', 0)
         total_volume = summary_data.get('total_volume', 0)
         pnl = summary_data.get('pnl', 0)
@@ -136,7 +215,7 @@ class TelegramNotifier:
 *Daily P&L:* {pnl_emoji} ${pnl:,.2f}
 *Account Balance:* ${account_balance:,.2f}
 
-*Summary Time:* {datetime.now().strftime('%H:%M:%S')}
+*Summary Time:* {get_local_timestamp()}
 """
         
         return self.send_message(message.strip())
@@ -149,7 +228,7 @@ class TelegramNotifier:
 *System:* E*TRADE Congressional Trading Bot
 *Status:* Online and Ready
 *Account:* $50,000 Brokerage
-*Time:* {datetime.now().strftime('%Y-%m-%d %H:%M:%S EST')}
+*Time:* {get_local_timestamp()}
 
 Test message successful! The system is ready to trade.
 """

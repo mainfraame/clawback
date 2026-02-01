@@ -172,11 +172,15 @@ class ETradeAdapter(BrokerAdapter):
 
                 return result
             else:
-                logger.error(f"Failed to get accounts: {response.status_code} - {response.text}")
+                error_msg = f"HTTP {response.status_code}"
+                self._notify_error("Get Accounts", error_msg, {
+                    "status_code": response.status_code,
+                    "response": response.text[:200]
+                })
                 return []
 
         except Exception as e:
-            logger.error(f"Error getting accounts: {e}")
+            self._notify_error("Get Accounts", str(e))
             return []
 
     def get_account_balance(self, account_id: Optional[str] = None) -> Optional[Dict[str, float]]:
@@ -212,11 +216,16 @@ class ETradeAdapter(BrokerAdapter):
                     'raw_data': balance_info
                 }
             else:
-                logger.error(f"Failed to get balance: {response.status_code} - {response.text}")
+                error_msg = f"HTTP {response.status_code}"
+                self._notify_error("Get Account Balance", error_msg, {
+                    "status_code": response.status_code,
+                    "account_id": account_id,
+                    "response": response.text[:200]
+                })
                 return None
 
         except Exception as e:
-            logger.error(f"Error getting account balance: {e}")
+            self._notify_error("Get Account Balance", str(e), {"account_id": account_id})
             return None
 
     def get_positions(self, account_id: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -267,11 +276,16 @@ class ETradeAdapter(BrokerAdapter):
                 logger.info("No positions in account")
                 return []
             else:
-                logger.error(f"Failed to get positions: {response.status_code} - {response.text}")
+                error_msg = f"HTTP {response.status_code}"
+                self._notify_error("Get Positions", error_msg, {
+                    "status_code": response.status_code,
+                    "account_id": account_id,
+                    "response": response.text[:200]
+                })
                 return []
 
         except Exception as e:
-            logger.error(f"Error getting positions: {e}")
+            self._notify_error("Get Positions", str(e), {"account_id": account_id})
             return []
 
     def get_quote(self, symbol: str) -> Optional[Dict[str, Any]]:
@@ -309,11 +323,15 @@ class ETradeAdapter(BrokerAdapter):
                 logger.debug(f"Quote for {symbol}: ${quote['last_price']:.2f}")
                 return quote
             else:
-                logger.error(f"Failed to get quote for {symbol}: {response.status_code}")
+                error_msg = f"HTTP {response.status_code}"
+                self._notify_error("Get Quote", error_msg, {
+                    "symbol": symbol,
+                    "status_code": response.status_code
+                })
                 return None
 
         except Exception as e:
-            logger.error(f"Error getting quote for {symbol}: {e}")
+            self._notify_error("Get Quote", str(e), {"symbol": symbol})
             return None
 
     def place_order(self, account_id: str, order_details: Dict[str, Any]) -> bool:
@@ -396,17 +414,36 @@ class ETradeAdapter(BrokerAdapter):
                             logger.info(f"Order placed: {order_details['action']} {order_details['quantity']} {order_details['symbol']}")
                         return True
                     else:
-                        logger.error(f"Failed to place order: {place_response.status_code} - {place_response.text}")
+                        error_msg = f"HTTP {place_response.status_code}"
+                        self._notify_error("Place Order", error_msg, {
+                            "symbol": order_details['symbol'],
+                            "action": order_details['action'],
+                            "quantity": order_details['quantity'],
+                            "status_code": place_response.status_code,
+                            "response": place_response.text[:200]
+                        })
                         return False
                 else:
-                    logger.error("No preview ID in response")
+                    self._notify_error("Place Order", "No preview ID in response", {
+                        "symbol": order_details['symbol'],
+                        "action": order_details['action']
+                    })
                     return False
             else:
-                logger.error(f"Order preview failed: {response.status_code} - {response.text}")
+                error_msg = f"Order preview failed: HTTP {response.status_code}"
+                self._notify_error("Place Order (Preview)", error_msg, {
+                    "symbol": order_details['symbol'],
+                    "action": order_details['action'],
+                    "quantity": order_details['quantity'],
+                    "response": response.text[:200]
+                })
                 return False
 
         except Exception as e:
-            logger.error(f"Error placing order: {e}")
+            self._notify_error("Place Order", str(e), {
+                "symbol": order_details.get('symbol'),
+                "action": order_details.get('action')
+            })
             return False
 
     def get_order_status(self, account_id: str, order_id: str) -> Optional[Dict[str, Any]]:
