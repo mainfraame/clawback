@@ -119,7 +119,7 @@ class TelegramNotifier:
 
         return self.send_message(message.strip())
 
-    def send_broker_error(self, operation, error_message, details=None):
+    def send_broker_error(self, operation, error_message, details=None, broker_name=None):
         """Send broker API error alert"""
         if not self.config.get('sendErrorAlerts', True):
             return False
@@ -131,13 +131,15 @@ class TelegramNotifier:
             else:
                 details_text = str(details)
 
+        broker_display = broker_name.replace('*', '\\*') if broker_name else "Unknown"
+
         message = f"""
 🚨 *BROKER API ERROR* 🚨
 
 *Operation:* {operation}
 *Error:* `{error_message}`
 {f"*Details:*{chr(10)}{details_text}" if details_text else ""}
-*Broker:* E\\*TRADE
+*Broker:* {broker_display}
 *Time:* {get_local_timestamp()}
 
 ⚡ _Action may be required_ ⚡
@@ -225,7 +227,7 @@ class TelegramNotifier:
         message = f"""
 ✅ *TRADING SYSTEM TEST* ✅
 
-*System:* E*TRADE Congressional Trading Bot
+*System:* ClawBack Congressional Trading Bot
 *Status:* Online and Ready
 *Account:* $50,000 Brokerage
 *Time:* {get_local_timestamp()}

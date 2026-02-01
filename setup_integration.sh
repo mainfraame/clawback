@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# Setup script for Congressional Data → E*TRADE Trading Integration
+# Setup script for Congressional Data → Broker Trading Integration
 
 set -e
 
-echo "🔗 Setting up Congressional Data to E*TRADE Trading Integration"
+echo "🔗 Setting up Congressional Data to Broker Trading Integration"
 echo "================================================================"
 
 # Colors for output
@@ -114,12 +114,12 @@ else
     echo -e "${YELLOW}⚠ Alert system test had issues${NC}"
 fi
 
-echo -e "\n3. Testing E*TRADE integration..."
-python3 src/congress_data/etrade_integration.py process
+echo -e "\n3. Testing Broker integration..."
+python3 src/congress_data/broker_integration.py process
 if [ $? -eq 0 ]; then
-    echo -e "${GREEN}✓ E*TRADE integration working${NC}"
+    echo -e "${GREEN}✓ Broker integration working${NC}"
 else
-    echo -e "${YELLOW}⚠ E*TRADE integration test had issues${NC}"
+    echo -e "${YELLOW}⚠ Broker integration test had issues${NC}"
 fi
 
 # Create systemd service for continuous monitoring (optional)
@@ -141,7 +141,7 @@ cat > run_automated_trading.sh << 'EOF'
 #!/bin/bash
 
 # Automated Trading Script
-# Runs congressional data collection → E*TRADE integration → Trading
+# Runs congressional data collection → Broker integration → Trading
 
 set -e
 
@@ -163,11 +163,11 @@ python3 src/congress_data/main.py once 2>&1 | tee -a "$LOG_FILE"
 
 # Step 2: Process alerts for trading
 echo -e "\nStep 2: Processing alerts for trading..." | tee -a "$LOG_FILE"
-python3 src/congress_data/etrade_integration.py process 2>&1 | tee -a "$LOG_FILE"
+python3 src/congress_data/broker_integration.py process 2>&1 | tee -a "$LOG_FILE"
 
 # Step 3: Get trading recommendations
 echo -e "\nStep 3: Checking for trading recommendations..." | tee -a "$LOG_FILE"
-python3 src/congress_data/etrade_integration.py recommendations --limit 5 2>&1 | tee -a "$LOG_FILE"
+python3 src/congress_data/broker_integration.py recommendations --limit 5 2>&1 | tee -a "$LOG_FILE"
 
 # Step 4: Execute trades (if in production mode)
 echo -e "\nStep 4: Checking if trades should be executed..." | tee -a "$LOG_FILE"
@@ -218,14 +218,14 @@ while true; do
     python3 src/congress_data/main.py stats 2>/dev/null | grep -A20 "CONGRESSIONAL DATA COLLECTION STATISTICS" | tail -n +3
     
     echo ""
-    echo "💼 E*TRADE INTEGRATION"
+    echo "💼 Broker INTEGRATION"
     echo "----------------------"
-    python3 src/congress_data/etrade_integration.py stats 2>/dev/null | grep -A10 "E*TRADE Integration Statistics" | tail -n +3
+    python3 src/congress_data/broker_integration.py stats 2>/dev/null | grep -A10 "Broker Integration Statistics" | tail -n +3
     
     echo ""
     echo "📈 RECENT TRADING RECOMMENDATIONS"
     echo "---------------------------------"
-    python3 src/congress_data/etrade_integration.py recommendations --limit 3 2>/dev/null | grep -A30 "Congressional Trading Recommendations" | tail -n +3
+    python3 src/congress_data/broker_integration.py recommendations --limit 3 2>/dev/null | grep -A30 "Congressional Trading Recommendations" | tail -n +3
     
     echo ""
     echo "⏰ Next cron run: 9:00 AM $(date -d 'tomorrow' +%A) (weekdays only)"
@@ -250,7 +250,7 @@ echo "   - Edit config/congress_config.json"
 echo "   - Add Telegram bot token for instant alerts"
 echo "   - Configure email alerts if desired"
 echo ""
-echo "2. ${YELLOW}Test E*TRADE Authentication:${NC}"
+echo "2. ${YELLOW}Test Broker Authentication:${NC}"
 echo "   python3 src/main.py auth"
 echo "   (Follow the OAuth flow in your browser)"
 echo ""
@@ -269,7 +269,7 @@ echo "   30 9 * * 1-5 $(pwd)/run_automated_trading.sh"
 echo ""
 echo "6. ${YELLOW}Enable Production Trading:${NC}"
 echo "   - Set 'use_sandbox': false in config/config.json"
-echo "   - Add production E*TRADE API keys"
+echo "   - Add production Broker API keys"
 echo "   - Test extensively in sandbox first!"
 echo ""
 echo "📁 IMPORTANT DIRECTORIES:"

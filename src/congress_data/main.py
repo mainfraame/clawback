@@ -192,7 +192,7 @@ class CongressDataApp:
             print(f"  Channels:")
             print(f"    - Telegram: {'✅' if alert_stats['channels']['telegram'] else '❌'}")
             print(f"    - Email: {'✅' if alert_stats['channels']['email'] else '❌'}")
-            print(f"    - E*TRADE Integration: {'✅' if alert_stats['channels']['etrade_integration'] else '❌'}")
+            print(f"    - E*TRADE Integration: {'✅' if alert_stats['channels']['broker_integration'] else '❌'}")
             
             print(f"\n⚙️  CONFIGURATION:")
             cron_config = self.config.get_cron_config()
@@ -274,7 +274,7 @@ class CongressDataApp:
                 
                 # Test E*TRADE integration
                 logger.info("Testing E*TRADE integration...")
-                if self.alert_manager.send_etrade_integration_alert(sample_trade):
+                if self.alert_manager.send_broker_integration_alert(sample_trade):
                     print("✅ E*TRADE integration alert saved")
                 else:
                     print("❌ E*TRADE integration alert failed")

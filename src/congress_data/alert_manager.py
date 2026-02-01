@@ -256,41 +256,38 @@ This trade exceeds the alert threshold of ${self.alert_config.get('minimum_trade
             logger.error(f"Error sending email alert: {e}")
             return False
     
-    def send_etrade_integration_alert(self, trade):
-        """Send alert to E*TRADE integration system"""
+    def send_broker_integration_alert(self, trade):
+        """Send alert to broker integration system (adapter pattern)"""
         try:
-            # This would integrate with the main E*TRADE trading bot
-            # For now, we'll log it and return a placeholder
-            
             alert_data = {
                 "type": "congressional_trade",
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now().astimezone().isoformat(),
                 "trade": trade,
                 "action": "review_for_trading"
             }
-            
-            # Save to file for E*TRADE bot to pick up
-            data_dir = self.storage_config.get("data_directory", "data/congress_trades")
-            alerts_dir = os.path.join(data_dir, "etrade_alerts")
-            os.makedirs(alerts_dir, exist_ok=True)
-            
+
+            # Save to notifications directory for broker integration to pick up
+            data_dir = self.storage_config.get("data_directory", "data")
+            notifications_dir = os.path.join(data_dir, "notifications")
+            os.makedirs(notifications_dir, exist_ok=True)
+
             filename = f"alert_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-            filepath = os.path.join(alerts_dir, filename)
-            
+            filepath = os.path.join(notifications_dir, filename)
+
             with open(filepath, 'w') as f:
                 json.dump(alert_data, f, indent=2)
-            
-            logger.info(f"E*TRADE integration alert saved: {filepath}")
-            
+
+            logger.info(f"Broker integration alert saved: {filepath}")
+
             # Also create a summary file for easy reading
-            summary_file = os.path.join(alerts_dir, "latest_alert.txt")
+            summary_file = os.path.join(notifications_dir, "latest_alert.txt")
             with open(summary_file, 'w') as f:
                 f.write(self.format_alert_message(trade))
-            
+
             return True
-            
+
         except Exception as e:
-            logger.error(f"Error sending E*TRADE integration alert: {e}")
+            logger.error(f"Error sending broker integration alert: {e}")
             return False
     
     def process_trades_for_alerts(self, trades):
@@ -323,7 +320,7 @@ This trade exceeds the alert threshold of ${self.alert_config.get('minimum_trade
                             sent = True
                     
                     # E*TRADE integration
-                    if self.send_etrade_integration_alert(trade):
+                    if self.send_broker_integration_alert(trade):
                         sent = True
                     
                     if sent:
@@ -352,7 +349,7 @@ This trade exceeds the alert threshold of ${self.alert_config.get('minimum_trade
             "channels": {
                 "telegram": bool(self.alert_config.get("telegram_bot_token")),
                 "email": self.alert_config.get("email_alerts", False),
-                "etrade_integration": True  # Always enabled
+                "broker_integration": True  # Always enabled
             },
             "thresholds": {
                 "minimum_trade_size": self.alert_config.get("minimum_trade_size_alert", 50000),

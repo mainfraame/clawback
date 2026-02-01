@@ -97,7 +97,7 @@ class TradingBot:
     def _handle_broker_error(self, operation: str, error: str, details: dict = None):
         """Handle broker API errors by sending Telegram notification"""
         self.logger.error(f"Broker error - {operation}: {error}")
-        self.notifier.send_broker_error(operation, error, details)
+        self.notifier.send_broker_error(operation, error, details, broker_name=self.broker.BROKER_NAME)
 
     def _get_local_timestamp(self):
         """Get current timestamp formatted in local timezone"""
