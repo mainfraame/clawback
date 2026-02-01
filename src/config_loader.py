@@ -126,43 +126,156 @@ def create_secrets_template():
 
 
 def setup_config_interactive():
-    """Interactive setup for configuration"""
+    """Interactive setup for configuration with account selection"""
     print("\n" + "="*60)
     print("  ClawBack - Configuration Setup")
     print("="*60)
 
     secrets = {}
 
-    print("\nBroker API Credentials")
-    print("   For E*TRADE, get these from https://developer.etrade.com/")
+    # Step 1: Environment selection
+    print("\n1. Select Environment")
+    print("   [1] Sandbox (for testing)")
+    print("   [2] Production (real trading)")
+    env_choice = input("   Choice (1/2): ").strip()
+    environment = "sandbox" if env_choice == "1" else "production"
+    print(f"   Selected: {environment}")
+
+    # Step 2: API Credentials
+    print("\n2. Broker API Credentials")
+    if environment == "sandbox":
+        print("   Get sandbox keys from https://developer.etrade.com/")
+    else:
+        print("   Get production keys from https://us.etrade.com/etx/ris/apikey")
+
     secrets['BROKER_API_KEY'] = input("   API Key: ").strip()
     secrets['BROKER_API_SECRET'] = input("   API Secret: ").strip()
-    secrets['BROKER_ACCOUNT_ID'] = input("   Account ID: ").strip()
 
-    print("\nOptional: Telegram Notifications")
-    telegram = input("   Enable Telegram? (y/n): ").strip().lower()
-    if telegram == 'y':
-        secrets['TELEGRAM_BOT_TOKEN'] = input("   Bot Token: ").strip()
-        secrets['TELEGRAM_CHAT_ID'] = input("   Chat ID: ").strip()
+    # Step 3: Authenticate and list accounts
+    print("\n3. Authenticating with E*TRADE...")
 
-    # Save secrets
+    # Save temp secrets for authentication
     secrets_path = 'config/secrets.json'
     os.makedirs('config', exist_ok=True)
+    secrets['BROKER_ACCOUNT_ID'] = ''  # Placeholder
+    secrets['TELEGRAM_BOT_TOKEN'] = ''
+    secrets['TELEGRAM_CHAT_ID'] = ''
     with open(secrets_path, 'w') as f:
         json.dump(secrets, f, indent=2)
 
-    print(f"\nSecrets saved to {secrets_path}")
-    print("   This file is in .gitignore and won't be committed.")
-
-    # Copy template to config if needed
+    # Update config with environment
     config_path = 'config/config.json'
     template_path = 'config/config.template.json'
     if not os.path.exists(config_path) and os.path.exists(template_path):
         import shutil
         shutil.copy(template_path, config_path)
-        print(f"Created {config_path} from template")
 
-    print("\nSetup complete! Run 'python3 src/main.py interactive' to start.")
+    # Load and update config with environment
+    if os.path.exists(config_path):
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+        config['broker']['environment'] = environment
+        with open(config_path, 'w') as f:
+            json.dump(config, f, indent=2)
+
+    try:
+        from broker_adapter import get_broker_adapter
+
+        # Reload config with secrets
+        config = load_config(config_path)
+        adapter = get_broker_adapter(config)
+
+        # Get auth URL
+        auth_url = adapter.get_auth_url()
+        if not auth_url:
+            print("   Failed to get authorization URL")
+            return
+
+        # Save auth state
+        auth_state = {
+            'request_token': adapter.request_token,
+            'request_secret': adapter.request_secret
+        }
+        with open('.auth_state.json', 'w') as f:
+            json.dump(auth_state, f)
+
+        print(f"\n   Please visit this URL to authorize:")
+        print(f"   {auth_url}")
+        print()
+        verifier = input("   Enter verification code: ").strip()
+
+        # Authenticate
+        if not adapter.authenticate(verifier):
+            print("   Authentication failed")
+            return
+
+        print("   ✅ Authentication successful!")
+
+        # Get accounts
+        print("\n4. Select Trading Account")
+        accounts = adapter.get_accounts()
+
+        if not accounts:
+            print("   No accounts found")
+            return
+
+        print("   Available accounts:")
+        for i, acc in enumerate(accounts, 1):
+            acc_type = acc.get('accountType', 'Unknown')
+            acc_desc = acc.get('accountDesc', acc.get('accountName', 'N/A'))
+            print(f"   [{i}] {acc['accountId']} - {acc_desc} ({acc_type})")
+
+        while True:
+            choice = input(f"\n   Select account (1-{len(accounts)}): ").strip()
+            try:
+                idx = int(choice) - 1
+                if 0 <= idx < len(accounts):
+                    selected_account = accounts[idx]['accountId']
+                    break
+            except ValueError:
+                pass
+            print("   Invalid choice, try again")
+
+        secrets['BROKER_ACCOUNT_ID'] = selected_account
+        print(f"   ✅ Selected account: {selected_account}")
+
+        # Save access tokens
+        tokens = {
+            'access_token': adapter.access_token,
+            'access_secret': adapter.access_secret
+        }
+        with open('.access_tokens.json', 'w') as f:
+            json.dump(tokens, f)
+        print("   ✅ Access tokens saved")
+
+    except ImportError:
+        print("   Broker adapter not available, skipping authentication")
+        secrets['BROKER_ACCOUNT_ID'] = input("   Account ID (manual entry): ").strip()
+    except Exception as e:
+        print(f"   Error during authentication: {e}")
+        secrets['BROKER_ACCOUNT_ID'] = input("   Account ID (manual entry): ").strip()
+
+    # Step 4: Telegram setup
+    print("\n5. Telegram Notifications (Optional)")
+    telegram = input("   Enable Telegram? (y/n): ").strip().lower()
+    if telegram == 'y':
+        print("   Create a bot with @BotFather and get your chat ID from @userinfobot")
+        secrets['TELEGRAM_BOT_TOKEN'] = input("   Bot Token: ").strip()
+        secrets['TELEGRAM_CHAT_ID'] = input("   Chat ID: ").strip()
+
+    # Save final secrets
+    with open(secrets_path, 'w') as f:
+        json.dump(secrets, f, indent=2)
+
+    print("\n" + "="*60)
+    print("  ✅ Setup Complete!")
+    print("="*60)
+    print(f"  Environment: {environment}")
+    print(f"  Account ID: {secrets['BROKER_ACCOUNT_ID']}")
+    print(f"  Telegram: {'Enabled' if secrets.get('TELEGRAM_BOT_TOKEN') else 'Disabled'}")
+    print()
+    print("  Run 'python3 src/main.py interactive' to start trading!")
+    print("="*60)
 
 
 if __name__ == "__main__":
