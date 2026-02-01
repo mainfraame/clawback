@@ -1,7 +1,7 @@
 ---
 name: clawback
 description: Mirror congressional stock trades with automated broker execution and risk management. Use when you want to track and automatically trade based on congressional disclosures from House Clerk and Senate eFD sources.
-version: 1.0.9
+version: 1.0.10
 author: mainfraame
 homepage: https://github.com/mainfraame/clawback
 user-invocable: true

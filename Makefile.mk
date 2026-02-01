@@ -8,7 +8,7 @@ CLAWHUB_REGISTRY ?= https://www.clawhub.ai
 SKILL_SLUG := clawback
 
 # Read version dynamically (not cached)
-version = $(shell cat VERSION 2>/dev/null || echo "0.0.0")
+version = $(shell cat VERSION.txt 2>/dev/null || echo "0.0.0")
 
 # Colors for output
 CYAN := \033[0;36m
@@ -163,7 +163,7 @@ ship-patch: ## Bump patch, commit, tag, push, publish - ALL IN ONE
 	@chmod +x scripts/bump-version.sh
 	@./scripts/bump-version.sh patch
 	@echo ""
-	@NEW_VER=$$(cat VERSION); \
+	@NEW_VER=$$(cat VERSION.txt); \
 	echo "$(CYAN)Committing v$$NEW_VER...$(NC)"; \
 	git add -A; \
 	git commit -m "chore(release): bump version to $$NEW_VER"; \
@@ -199,7 +199,7 @@ ship-minor: ## Bump minor, commit, tag, push, publish - ALL IN ONE
 	@chmod +x scripts/bump-version.sh
 	@./scripts/bump-version.sh minor
 	@echo ""
-	@NEW_VER=$$(cat VERSION); \
+	@NEW_VER=$$(cat VERSION.txt); \
 	echo "$(CYAN)Committing v$$NEW_VER...$(NC)"; \
 	git add -A; \
 	git commit -m "chore(release): bump version to $$NEW_VER"; \
@@ -235,7 +235,7 @@ ship-major: ## Bump major, commit, tag, push, publish - ALL IN ONE
 	@chmod +x scripts/bump-version.sh
 	@./scripts/bump-version.sh major
 	@echo ""
-	@NEW_VER=$$(cat VERSION); \
+	@NEW_VER=$$(cat VERSION.txt); \
 	echo "$(CYAN)Committing v$$NEW_VER...$(NC)"; \
 	git add -A; \
 	git commit -m "chore(release): bump version to $$NEW_VER"; \

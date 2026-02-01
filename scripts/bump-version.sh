@@ -6,7 +6,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-VERSION_FILE="$PROJECT_DIR/VERSION"
+VERSION_FILE="$PROJECT_DIR/VERSION.txt"
 
 # Read current version
 if [ ! -f "$VERSION_FILE" ]; then
@@ -76,7 +76,7 @@ fi
 
 echo ""
 echo "Version bumped to $NEW_VERSION in:"
-echo "  - VERSION"
+echo "  - VERSION.txt"
 echo "  - pyproject.toml"
 echo "  - setup.py"
 echo "  - SKILL.md"
