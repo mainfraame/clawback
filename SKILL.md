@@ -1,7 +1,7 @@
 ---
 name: clawback
 description: Mirror congressional stock trades with automated broker execution and risk management. Use when you want to track and automatically trade based on congressional disclosures from House Clerk and Senate eFD sources.
-version: 1.0.12
+version: 1.0.13
 author: mainfraame
 homepage: https://github.com/mainfraame/clawback
 user-invocable: true
@@ -20,21 +20,78 @@ When the user invokes `/clawback`, execute the appropriate command based on the 
 
 | Command | Action |
 |---------|--------|
-| `/clawback setup` | Run setup wizard: `cd {baseDir} && ./setup.sh` |
+| `/clawback setup` | Interactive setup - prompt for credentials (see below) |
 | `/clawback status` | Check status: `cd {baseDir} && source venv/bin/activate && python -m clawback.cli status` |
 | `/clawback run` | Start trading: `cd {baseDir} && source venv/bin/activate && python -m clawback.cli run` |
 | `/clawback` | Default to status check |
 
-### First-Time Setup Flow
+### `/clawback setup` - Interactive Setup Flow
 
-If the user runs `/clawback` and setup hasn't been completed:
+When user runs `/clawback setup`, follow these steps:
 
-1. Check if `{baseDir}/venv` exists - if not, run setup first
-2. Check if `~/.clawback/config.json` has credentials - if empty, guide user through configuration
-3. For E*TRADE setup, user needs:
-   - Consumer Key (from E*TRADE developer portal)
-   - Consumer Secret (from E*TRADE developer portal)
-   - Account ID (obtained after OAuth)
+**Step 1: Install dependencies (if needed)**
+Check if `{baseDir}/venv` exists. If not, run:
+```bash
+cd {baseDir} && python3 -m venv venv && source venv/bin/activate && pip install -e .
+```
+
+**Step 2: Prompt for E*TRADE credentials**
+Ask the user for each value:
+
+1. **Environment**: Ask "Do you want to use **sandbox** (testing) or **production** (real money)?"
+   - Default: sandbox
+
+2. **Consumer Key**: Ask "Enter your E*TRADE Consumer Key (from developer.etrade.com):"
+   - Required field
+
+3. **Consumer Secret**: Ask "Enter your E*TRADE Consumer Secret:"
+   - Required field
+
+4. **Account ID**: Ask "Enter your E*TRADE Account ID (or leave blank to get it after OAuth):"
+   - Optional - can be obtained later
+
+**Step 3: Save configuration**
+Create/update `~/.clawback/config.json` with the provided values:
+```json
+{
+  "broker": {
+    "adapter": "etrade",
+    "environment": "<sandbox or production>",
+    "credentials": {
+      "apiKey": "<consumer_key>",
+      "apiSecret": "<consumer_secret>"
+    }
+  },
+  "trading": {
+    "accountId": "<account_id>",
+    "initialCapital": 50000,
+    "tradeScalePercentage": 0.01,
+    "maxPositionPercentage": 0.05,
+    "dailyLossLimit": 0.02
+  },
+  "notifications": {
+    "telegram": {
+      "enabled": true,
+      "useOpenClaw": true
+    }
+  },
+  "congress": {
+    "dataSource": "official",
+    "pollIntervalHours": 24,
+    "minimumTradeSize": 10000
+  }
+}
+```
+
+**Step 4: Confirm setup**
+Tell the user: "Configuration saved to ~/.clawback/config.json. Run `/clawback status` to verify."
+
+### Getting E*TRADE API Credentials
+
+Direct user to: https://developer.etrade.com
+1. Create a developer account
+2. Create a new app (sandbox first for testing)
+3. Copy the Consumer Key and Consumer Secret
 
 ### Configuration Location
 
