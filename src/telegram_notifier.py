@@ -10,10 +10,6 @@ import requests
 logger = logging.getLogger(__name__)
 
 
-def get_local_timestamp():
-    """Get current timestamp formatted in local timezone"""
-    return datetime.now().astimezone().strftime('%Y-%m-%d %H:%M:%S %Z')
-
 class TelegramNotifier:
     """Sends Telegram notifications for trading activities"""
     
@@ -76,8 +72,6 @@ class TelegramNotifier:
 *Price:* ${price:.2f}
 *Total:* ${total:.2f}
 *Reason:* {reason}
-
-*Time:* {get_local_timestamp()}
 """
         
         return self.send_message(message.strip())
@@ -96,9 +90,7 @@ class TelegramNotifier:
 *Politician:* {politician}
 *Action:* {action} {symbol}
 *Amount:* ${amount:,.2f}
-*Date:* {date}
-
-*Time Detected:* {get_local_timestamp()}
+*Trade Date:* {date}
 """
         
         return self.send_message(message.strip())
@@ -114,7 +106,6 @@ class TelegramNotifier:
 *Type:* {error_type}
 *Error:* {error_message}
 *Context:* {context}
-*Time:* {get_local_timestamp()}
 """
 
         return self.send_message(message.strip())
@@ -140,7 +131,6 @@ class TelegramNotifier:
 *Error:* `{error_message}`
 {f"*Details:*{chr(10)}{details_text}" if details_text else ""}
 *Broker:* {broker_display}
-*Time:* {get_local_timestamp()}
 
 ⚡ _Action may be required_ ⚡
 """
@@ -167,8 +157,6 @@ class TelegramNotifier:
 *Source:* {source}
 *Error:* `{error_message}`
 {f"*Details:*{chr(10)}{details_text}" if details_text else ""}
-*Time:* {get_local_timestamp()}
-
 📋 _Will retry at next scheduled check_
 """
 
@@ -182,7 +170,6 @@ class TelegramNotifier:
 
 *Pending Trades:* {pending_trades}
 *Next Action:* Execute at market open (9:35 AM ET)
-*Time:* {get_local_timestamp()}
 """
         else:
             message = f"""
@@ -190,7 +177,6 @@ class TelegramNotifier:
 
 *Status:* Trading enabled
 *Pending Trades:* {pending_trades}
-*Time:* {get_local_timestamp()}
 """
 
         return self.send_message(message.strip())
@@ -216,8 +202,6 @@ class TelegramNotifier:
 *Total Volume:* ${total_volume:,.2f}
 *Daily P&L:* {pnl_emoji} ${pnl:,.2f}
 *Account Balance:* ${account_balance:,.2f}
-
-*Summary Time:* {get_local_timestamp()}
 """
         
         return self.send_message(message.strip())
@@ -243,7 +227,6 @@ class TelegramNotifier:
 *Broker:* {broker_display}
 *Auth Status:* {auth_status}
 *Account Balance:* {balance_display}
-*Time:* {get_local_timestamp()}
 
 {"System ready to trade!" if is_authenticated else "⚠️ Please authenticate before trading."}
 """
