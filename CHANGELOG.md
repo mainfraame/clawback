@@ -2,8 +2,15 @@
 
 ## [1.1.0] - 2026-02-01
 
+### Added
+- **Default Target Politicians** - Documented default tracked politicians (Pelosi, Crenshaw, Tuberville, MTG)
+- **Trading Strategy Defaults** - Documented trade delay, holding period, check times
+- **File Locations** - Added section documenting config, tokens, and database paths
+- **Authentication Helpers** - Documented `scripts/auth_script.py` usage
+
 ### Changed
-- Version bump
+- Enhanced SKILL.md with comprehensive strategy and configuration documentation
+- Updated README.md with politician list, trading strategy, and linting workflow
 
 
 ## [1.0.16] - 2026-02-01
