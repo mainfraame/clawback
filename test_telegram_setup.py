@@ -2,25 +2,23 @@
 """
 Test Telegram setup for congressional trading system
 """
-import json
 import sys
 from pathlib import Path
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent / 'src'))
 
+from config_loader import load_config
 from telegram_notifier import TelegramNotifier
 
 def test_telegram():
     """Test Telegram notification setup"""
+
+    # Load config with secrets
+    config = load_config('config/config.json')
     
-    # Load config
-    config_path = Path(__file__).parent / 'config' / 'config.json'
-    with open(config_path, 'r') as f:
-        config = json.load(f)
-    
-    # Initialize notifier
-    notifier = TelegramNotifier(config)
+    # Initialize notifier with notifications config
+    notifier = TelegramNotifier(config.get('notifications', {}))
     
     if not notifier.enabled:
         print("❌ Telegram is disabled in config")
@@ -69,7 +67,7 @@ def test_telegram():
     
     # Test 4: Send error alert
     print("4. Testing error alert...")
-    if notifier.send_error_alert('Connection Error', 'Failed to connect to E*TRADE API', 'During authentication'):
+    if notifier.send_error_alert('Connection Error', 'Failed to connect to broker API', 'During authentication'):
         print("   ✅ Error alert sent successfully!")
     else:
         print("   ❌ Failed to send error alert")

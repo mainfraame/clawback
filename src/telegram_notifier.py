@@ -224,8 +224,8 @@ class TelegramNotifier:
     
     def send_test_message(self, broker_name=None, account_balance=None, is_authenticated=False):
         """Send test message to verify setup with actual system state"""
-        # Format broker display name
-        broker_display = broker_name or "Not configured"
+        # Format broker display name (escape markdown special chars)
+        broker_display = (broker_name or "Not configured").replace('*', '\\*').replace('_', '\\_')
 
         # Format account balance
         if account_balance is not None:

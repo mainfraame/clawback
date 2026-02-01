@@ -24,12 +24,20 @@ class ETradeAdapter(BrokerAdapter):
 
     BROKER_NAME = "E*TRADE"
 
-    # E*TRADE API URLs - built into the adapter
-    BASE_URL = "https://api.etrade.com"
-    OAUTH_URLS = {
-        "request_token": "https://api.etrade.com/oauth/request_token",
-        "access_token": "https://api.etrade.com/oauth/access_token",
-        "authorize": "https://us.etrade.com/e/t/etws/authorize"
+    # E*TRADE API URLs - configurable for sandbox vs production
+    URLS = {
+        "sandbox": {
+            "base": "https://apisb.etrade.com",
+            "request_token": "https://apisb.etrade.com/oauth/request_token",
+            "access_token": "https://apisb.etrade.com/oauth/access_token",
+            "authorize": "https://us.etrade.com/e/t/etws/authorize"
+        },
+        "production": {
+            "base": "https://api.etrade.com",
+            "request_token": "https://api.etrade.com/oauth/request_token",
+            "access_token": "https://api.etrade.com/oauth/access_token",
+            "authorize": "https://us.etrade.com/e/t/etws/authorize"
+        }
     }
 
     def __init__(self, config: Dict[str, Any]):
@@ -47,6 +55,20 @@ class ETradeAdapter(BrokerAdapter):
         broker_config = config.get('broker', {})
         credentials = broker_config.get('credentials', {})
 
+        # Get environment (sandbox or production)
+        self.environment = broker_config.get('environment', 'production').lower()
+        if self.environment not in ['sandbox', 'production']:
+            self.environment = 'production'
+
+        # Set URLs based on environment
+        env_urls = self.URLS[self.environment]
+        self.BASE_URL = env_urls['base']
+        self.OAUTH_URLS = {
+            "request_token": env_urls['request_token'],
+            "access_token": env_urls['access_token'],
+            "authorize": env_urls['authorize']
+        }
+
         # Get credentials
         self.api_key = credentials.get('apiKey', '')
         self.api_secret = credentials.get('apiSecret', '')
@@ -62,7 +84,7 @@ class ETradeAdapter(BrokerAdapter):
         self.account_id_key = None
         self.accounts_map = {}  # accountId -> accountIdKey mapping
 
-        logger.info("Initialized E*TRADE adapter")
+        logger.info(f"Initialized E*TRADE adapter ({self.environment} environment)")
 
     def _get_oauth(self) -> OAuth1:
         """Get OAuth1 session for API calls."""

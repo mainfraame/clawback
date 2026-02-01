@@ -1,6 +1,7 @@
 {
   "broker": {
     "adapter": "etrade",
+    "environment": "sandbox",
     "credentials": {
       "apiKey": "${BROKER_API_KEY}",
       "apiSecret": "${BROKER_API_SECRET}"

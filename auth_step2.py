@@ -3,6 +3,7 @@
 import json
 import sys
 sys.path.append('src')
+from config_loader import load_config
 from broker_adapter import get_broker_adapter
 
 if len(sys.argv) < 2:
@@ -11,8 +12,8 @@ if len(sys.argv) < 2:
 
 verifier = sys.argv[1]
 
-with open('config/config.json', 'r') as f:
-    config = json.load(f)
+# Load config with secrets
+config = load_config('config/config.json')
 
 # Load saved state
 with open('.auth_state.json', 'r') as f:
