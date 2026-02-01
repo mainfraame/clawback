@@ -125,9 +125,16 @@ publish: ## Publish to ClawHub
 	@echo "Version: $(VERSION)"
 	@echo "Registry: $(CLAWHUB_REGISTRY)"
 	@echo ""
-	clawhub publish . \
+	@# Copy to OpenClaw workspace (ClawHub looks there)
+	@rm -rf ~/.openclaw/workspace/skills/$(SKILL_SLUG)
+	@mkdir -p ~/.openclaw/workspace/skills
+	@cp -r . ~/.openclaw/workspace/skills/$(SKILL_SLUG)
+	@rm -rf ~/.openclaw/workspace/skills/$(SKILL_SLUG)/.git
+	@echo "Copied to ~/.openclaw/workspace/skills/$(SKILL_SLUG)"
+	clawhub publish ~/.openclaw/workspace/skills/$(SKILL_SLUG) \
 		--slug $(SKILL_SLUG) \
 		--version $(VERSION) \
+		--changelog "Release v$(VERSION)" \
 		--tags latest \
 		--registry $(CLAWHUB_REGISTRY)
 	@echo ""
