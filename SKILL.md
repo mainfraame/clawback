@@ -15,7 +15,7 @@ metadata:
       config:
         - channels.telegram.botToken
     install:
-      pip: clawback
+      pip: "{baseDir}"
     primaryEnv: BROKER_API_KEY
 ---
 
@@ -47,8 +47,8 @@ Congressional leaders have outperformed the S&P 500 by 47% annually according to
 ## Quick Start
 
 ```bash
-# Install from PyPI
-pip install clawback
+# Install via ClawHub (includes pip package)
+clawhub install clawback
 
 # Run setup wizard (credentials, auth, account selection, Telegram)
 clawback setup
@@ -57,13 +57,9 @@ clawback setup
 clawback run
 ```
 
-### Alternative: Install from ClawHub
+### Alternative: Install from GitHub
 
 ```bash
-# Install via ClawHub
-clawhub install clawback
-
-# Or install from source
 git clone https://github.com/mainfraame/clawback
 cd clawback
 pip install -e .
