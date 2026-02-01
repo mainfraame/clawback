@@ -1,7 +1,7 @@
 ---
 name: clawback
 description: Mirror congressional stock trades with automated broker execution and risk management. Use when you want to track and automatically trade based on congressional disclosures from House Clerk and Senate eFD sources.
-version: 1.0.11
+version: 1.0.12
 author: mainfraame
 homepage: https://github.com/mainfraame/clawback
 user-invocable: true
@@ -11,6 +11,37 @@ metadata: {"openclaw": {"emoji": "🦀", "requires": {"bins": ["python3", "pip"]
 # ClawBack
 
 **Mirror congressional stock trades with automated broker execution**
+
+## Agent Instructions
+
+When the user invokes `/clawback`, execute the appropriate command based on the argument:
+
+### Commands
+
+| Command | Action |
+|---------|--------|
+| `/clawback setup` | Run setup wizard: `cd {baseDir} && ./setup.sh` |
+| `/clawback status` | Check status: `cd {baseDir} && source venv/bin/activate && python -m clawback.cli status` |
+| `/clawback run` | Start trading: `cd {baseDir} && source venv/bin/activate && python -m clawback.cli run` |
+| `/clawback` | Default to status check |
+
+### First-Time Setup Flow
+
+If the user runs `/clawback` and setup hasn't been completed:
+
+1. Check if `{baseDir}/venv` exists - if not, run setup first
+2. Check if `~/.clawback/config.json` has credentials - if empty, guide user through configuration
+3. For E*TRADE setup, user needs:
+   - Consumer Key (from E*TRADE developer portal)
+   - Consumer Secret (from E*TRADE developer portal)
+   - Account ID (obtained after OAuth)
+
+### Configuration Location
+
+- Config file: `~/.clawback/config.json`
+- Skill directory: `{baseDir}`
+
+---
 
 ClawBack tracks stock trades disclosed by members of Congress (House and Senate) and executes scaled positions in your E*TRADE brokerage account. Built on the premise that congressional leaders consistently outperform the market due to informational advantages.
 
