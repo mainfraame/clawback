@@ -1,35 +1,95 @@
 """
 Telegram notification system for trading alerts
+
+Supports two modes:
+1. OpenClaw mode: Uses `openclaw message send` CLI when running as a skill
+2. Standalone mode: Uses direct Telegram Bot API when running independently
 """
 import logging
 import json
 import os
+import shutil
+import subprocess
 from datetime import datetime
 import requests
 
 logger = logging.getLogger(__name__)
 
 
+def _is_openclaw_available():
+    """Check if OpenClaw CLI is available and configured for Telegram"""
+    return shutil.which('openclaw') is not None
+
+
 class TelegramNotifier:
     """Sends Telegram notifications for trading activities"""
-    
+
     def __init__(self, config):
         self.config = config.get('telegram', {})
         self.enabled = self.config.get('enabled', False)
         self.bot_token = self.config.get('botToken', '')
         self.chat_id = self.config.get('chatId', '')
-        
-        if self.enabled and (not self.bot_token or not self.chat_id):
+
+        # Check for OpenClaw mode
+        self.use_openclaw = self.config.get('useOpenClaw', False) or os.environ.get('OPENCLAW_SESSION')
+
+        if self.use_openclaw and _is_openclaw_available():
+            self.enabled = True
+            self.mode = 'openclaw'
+            logger.info("Telegram notifier using OpenClaw channel")
+        elif self.enabled and self.bot_token and self.chat_id:
+            self.mode = 'standalone'
+            logger.info("Telegram notifier using direct Bot API")
+        elif self.enabled:
             logger.warning("Telegram enabled but token or chat ID missing")
             self.enabled = False
-        
-        logger.info(f"Telegram notifier initialized: {'ENABLED' if self.enabled else 'DISABLED'}")
+            self.mode = None
+        else:
+            self.mode = None
+            logger.info("Telegram notifier disabled")
     
     def send_message(self, message, parse_mode='Markdown'):
         """Send a message to Telegram"""
         if not self.enabled:
             return False
-        
+
+        if self.mode == 'openclaw':
+            return self._send_via_openclaw(message)
+        else:
+            return self._send_via_bot_api(message, parse_mode)
+
+    def _send_via_openclaw(self, message):
+        """Send message using OpenClaw CLI"""
+        try:
+            # Convert Markdown to plain text for OpenClaw (it handles formatting)
+            # Remove markdown symbols for cleaner display
+            clean_message = message.replace('*', '').replace('`', '')
+
+            cmd = [
+                'openclaw', 'message', 'send',
+                '--channel', 'telegram',
+                '--target', str(self.chat_id) if self.chat_id else '@me',
+                '--message', clean_message
+            ]
+
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+
+            if result.returncode == 0:
+                logger.debug("Message sent via OpenClaw")
+                return True
+            else:
+                logger.error(f"OpenClaw message send failed: {result.stderr}")
+                return False
+
+        except subprocess.TimeoutExpired:
+            logger.error("OpenClaw message send timed out")
+            return False
+        except Exception as e:
+            logger.error(f"Error sending via OpenClaw: {e}")
+            return False
+
+    def _send_via_bot_api(self, message, parse_mode='Markdown'):
+        """Send message using direct Telegram Bot API"""
         try:
             url = f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
             payload = {
@@ -38,16 +98,16 @@ class TelegramNotifier:
                 "parse_mode": parse_mode,
                 "disable_web_page_preview": True
             }
-            
+
             response = requests.post(url, json=payload, timeout=10)
-            
+
             if response.status_code == 200:
                 logger.debug("Telegram message sent successfully")
                 return True
             else:
                 logger.error(f"Telegram API error: {response.status_code} - {response.text}")
                 return False
-                
+
         except Exception as e:
             logger.error(f"Error sending Telegram message: {e}")
             return False

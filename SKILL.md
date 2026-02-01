@@ -1,7 +1,7 @@
 ---
 name: clawback
 description: Mirror congressional stock trades with automated broker execution and risk management. Use when you want to track and automatically trade based on congressional disclosures from House Clerk and Senate eFD sources.
-version: 1.0.0
+version: 1.0.1
 author: mainfraame
 homepage: https://github.com/mainfraame/clawback
 user-invocable: true
@@ -12,11 +12,8 @@ metadata:
       bins:
         - python3
         - pip
-    env:
-      - BROKER_API_KEY
-      - BROKER_API_SECRET
-    config:
-      - skills.entries.clawback.enabled
+      config:
+        - channels.telegram.botToken
     install:
       pip: clawback
     primaryEnv: BROKER_API_KEY
@@ -75,15 +72,43 @@ clawback setup
 
 ## Configuration
 
-ClawBack reads secrets from environment variables or `config/secrets.json`:
+### Broker Credentials
+
+ClawBack reads broker secrets from environment variables or `~/.clawback/secrets.json`:
 
 ```json
 {
   "BROKER_API_KEY": "your-broker-api-key",
   "BROKER_API_SECRET": "your-broker-api-secret",
-  "BROKER_ACCOUNT_ID": "your-account-id",
-  "TELEGRAM_BOT_TOKEN": "optional-for-notifications",
-  "TELEGRAM_CHAT_ID": "optional-for-notifications"
+  "BROKER_ACCOUNT_ID": "your-account-id"
+}
+```
+
+### Telegram Notifications
+
+**When running as OpenClaw skill:** ClawBack uses OpenClaw's built-in Telegram channel. Configure once in `~/.openclaw/openclaw.json`:
+
+```json
+{
+  "channels": {
+    "telegram": {
+      "botToken": "8508571965:AAGLsPF...",
+      "dmPolicy": "pairing"
+    }
+  }
+}
+```
+
+Then pair your Telegram account:
+1. Message `/start` to your bot
+2. Run: `openclaw pairing approve telegram <code>`
+
+**When running standalone:** Add Telegram credentials to your secrets:
+
+```json
+{
+  "TELEGRAM_BOT_TOKEN": "your-bot-token",
+  "TELEGRAM_CHAT_ID": "your-chat-id"
 }
 ```
 
