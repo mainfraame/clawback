@@ -127,6 +127,8 @@ publish: ## Publish to ClawHub
 	@mkdir -p ~/.openclaw/workspace/skills
 	@cp -r . ~/.openclaw/workspace/skills/$(SKILL_SLUG)
 	@rm -rf ~/.openclaw/workspace/skills/$(SKILL_SLUG)/.git
+	@rm -rf ~/.openclaw/workspace/skills/$(SKILL_SLUG)/.idea
+	@rm -rf ~/.openclaw/workspace/skills/$(SKILL_SLUG)/.claude
 	@echo "Copied to ~/.openclaw/workspace/skills/$(SKILL_SLUG)"
 	clawhub publish ~/.openclaw/workspace/skills/$(SKILL_SLUG) \
 		--slug $(SKILL_SLUG) \
@@ -177,6 +179,8 @@ ship-patch: ## Bump patch, commit, tag, push, publish - ALL IN ONE
 	mkdir -p ~/.openclaw/workspace/skills; \
 	cp -r . ~/.openclaw/workspace/skills/$(SKILL_SLUG); \
 	rm -rf ~/.openclaw/workspace/skills/$(SKILL_SLUG)/.git; \
+	rm -rf ~/.openclaw/workspace/skills/$(SKILL_SLUG)/.idea; \
+	rm -rf ~/.openclaw/workspace/skills/$(SKILL_SLUG)/.claude; \
 	clawhub publish ~/.openclaw/workspace/skills/$(SKILL_SLUG) \
 		--slug $(SKILL_SLUG) \
 		--version $$NEW_VER \
@@ -211,6 +215,8 @@ ship-minor: ## Bump minor, commit, tag, push, publish - ALL IN ONE
 	mkdir -p ~/.openclaw/workspace/skills; \
 	cp -r . ~/.openclaw/workspace/skills/$(SKILL_SLUG); \
 	rm -rf ~/.openclaw/workspace/skills/$(SKILL_SLUG)/.git; \
+	rm -rf ~/.openclaw/workspace/skills/$(SKILL_SLUG)/.idea; \
+	rm -rf ~/.openclaw/workspace/skills/$(SKILL_SLUG)/.claude; \
 	clawhub publish ~/.openclaw/workspace/skills/$(SKILL_SLUG) \
 		--slug $(SKILL_SLUG) \
 		--version $$NEW_VER \
@@ -245,6 +251,8 @@ ship-major: ## Bump major, commit, tag, push, publish - ALL IN ONE
 	mkdir -p ~/.openclaw/workspace/skills; \
 	cp -r . ~/.openclaw/workspace/skills/$(SKILL_SLUG); \
 	rm -rf ~/.openclaw/workspace/skills/$(SKILL_SLUG)/.git; \
+	rm -rf ~/.openclaw/workspace/skills/$(SKILL_SLUG)/.idea; \
+	rm -rf ~/.openclaw/workspace/skills/$(SKILL_SLUG)/.claude; \
 	clawhub publish ~/.openclaw/workspace/skills/$(SKILL_SLUG) \
 		--slug $(SKILL_SLUG) \
 		--version $$NEW_VER \
