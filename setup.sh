@@ -25,7 +25,7 @@ pip install -e .
 
 # Make CLI executable
 echo "Making CLI executable..."
-chmod +x bin/clawback
+chmod +x bin/clawback.py
 
 # Create config directory
 echo "Creating config directory..."
@@ -69,7 +69,7 @@ fi
 
 # Create symlink to CLI
 echo "Creating symlink to CLI..."
-sudo ln -sf "$(pwd)/bin/clawback" /usr/local/bin/clawback 2>/dev/null || true
+sudo ln -sf "$(pwd)/bin/clawback.py" /usr/local/bin/clawback 2>/dev/null || true
 
 echo ""
 echo "✅ Setup complete!"
