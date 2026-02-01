@@ -1,0 +1,48 @@
+# Secrets - NEVER commit these
+.env
+.env.local
+.secrets.json
+.access_tokens.json
+.auth_state.json
+config/secrets.json
+
+# Config with real values
+config/config.local.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+.venv/
+
+# Data files (may contain sensitive trade info)
+data/*.db
+data/*.json
+!data/.gitkeep
+
+# Allow seed data directory (ships with package)
+!data/seed/
+!data/seed/*.json
+
+# Logs
+logs/*.log
+*.log
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build
+dist/
+build/
+*.egg-info/
