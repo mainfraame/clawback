@@ -1,7 +1,7 @@
 ---
 name: clawback
 description: Mirror congressional stock trades with automated broker execution and risk management. Use when you want to track and automatically trade based on congressional disclosures from House Clerk and Senate eFD sources.
-version: 1.0.13
+version: 1.0.14
 author: mainfraame
 homepage: https://github.com/mainfraame/clawback
 user-invocable: true
@@ -97,6 +97,22 @@ Direct user to: https://developer.etrade.com
 
 - Config file: `~/.clawback/config.json`
 - Skill directory: `{baseDir}`
+
+### Reading Saved Configuration
+
+To check if the user has configured credentials, read `~/.clawback/config.json`:
+- If file doesn't exist or credentials are empty → prompt for setup
+- If credentials exist → can proceed with status/run commands
+
+The CLI automatically reads from `~/.clawback/config.json` for all operations.
+
+### Checking Setup Status
+
+Before running `/clawback status` or `/clawback run`, verify:
+1. `{baseDir}/venv` exists (dependencies installed)
+2. `~/.clawback/config.json` exists with non-empty `broker.credentials.apiKey`
+
+If either is missing, suggest running `/clawback setup` first.
 
 ---
 
