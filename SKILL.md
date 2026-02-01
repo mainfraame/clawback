@@ -1,22 +1,27 @@
 ---
 name: clawback
-description: Mirror congressional stock trades with automated broker execution and risk management
+description: Mirror congressional stock trades with automated broker execution and risk management. Use when you want to track and automatically trade based on congressional disclosures from House Clerk and Senate eFD sources.
 version: 1.0.0
 author: dayne
 metadata:
   openclaw:
     requires:
-      - python3
-      - pdfplumber
-      - selenium
-      - yfinance
+      bins:
+        - python3
+      packages:
+        - pdfplumber
+        - selenium
+        - yfinance
+        - schedule
+        - python-dotenv
     config:
-      - BROKER_API_KEY
-      - BROKER_API_SECRET
-      - BROKER_ACCOUNT_ID
+      - ETRADE_API_KEY
+      - ETRADE_API_SECRET
+      - ETRADE_ACCOUNT_ID
     optional_config:
       - TELEGRAM_BOT_TOKEN
       - TELEGRAM_CHAT_ID
+      - FMP_API_KEY
 ---
 
 # ClawBack

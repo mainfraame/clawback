@@ -67,37 +67,70 @@ Automated trading application that mirrors congressional stock trades using brok
 - **Broker Integration**: Automated trading recommendations
 - **Thresholds**: Configurable trade size alerts (>$50K default)
 
+## OpenClaw Skill Integration
+
+ClawBack is also available as an OpenClaw skill for easy installation and management:
+
+### Install as OpenClaw Skill:
+```bash
+# Install from local directory
+clawhub install ./clawback
+
+# Or copy to skills directory
+cp -r . ~/.openclaw/skills/clawback
+cd ~/.openclaw/skills/clawback
+./setup.sh
+```
+
+### Skill Features:
+- **Automated setup** with virtual environment
+- **Environment-based configuration** (.env file)
+- **OpenClaw metadata** for automatic skill loading
+- **Comprehensive testing** suite
+- **Skill-specific documentation** (SKILL_README.md)
+
 ## Quick Start
 
-### 1. Install Dependencies:
+### Option 1: Standard Installation
 ```bash
 cd clawback
 pip3 install -r requirements.txt
 ```
 
-### 2. Configure Secrets:
+### Option 2: OpenClaw Skill Installation
+```bash
+# Install and setup
+clawhub install ./clawback
+cd ~/.openclaw/skills/clawback
+./setup.sh
+```
+
+### Configure Secrets:
 ```bash
 # Run interactive setup
 python3 src/config_loader.py setup
 
 # Or manually edit secrets
 nano config/secrets.json
+
+# For OpenClaw skill, edit .env file
+nano .env
 ```
 
-### 3. Authenticate with Broker:
+### Authenticate with Broker:
 ```bash
 # Run interactive mode
 python3 src/main.py interactive
 # Select option 1 to authenticate
 ```
 
-### 4. Set Up Automation:
+### Set Up Automation:
 ```bash
 # Install cron jobs
 ./scripts/setup_cron.sh
 ```
 
-### 5. Run the System:
+### Run the System:
 ```bash
 # Check for new trades
 ./scripts/run_bot.sh check

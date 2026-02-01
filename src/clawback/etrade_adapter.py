@@ -9,7 +9,7 @@ from urllib.parse import quote, unquote
 import requests
 from requests_oauthlib import OAuth1
 
-from broker_adapter import BrokerAdapter
+from .broker_adapter import BrokerAdapter
 
 logger = logging.getLogger(__name__)
 

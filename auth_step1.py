@@ -3,10 +3,10 @@
 import json
 import sys
 sys.path.append('src')
+from config_loader import load_config
 from broker_adapter import get_broker_adapter
 
-with open('config/config.json', 'r') as f:
-    config = json.load(f)
+config = load_config('config/config.json')
 
 broker = get_broker_adapter(config)
 auth_url = broker.get_auth_url()

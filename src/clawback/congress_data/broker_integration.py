@@ -13,7 +13,7 @@ from pathlib import Path
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from broker_adapter import get_broker_adapter
+from ..broker_adapter import get_broker_adapter
 
 logger = logging.getLogger(__name__)
 

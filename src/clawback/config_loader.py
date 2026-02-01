@@ -179,7 +179,7 @@ def setup_config_interactive():
             json.dump(config, f, indent=2)
 
     try:
-        from broker_adapter import get_broker_adapter
+        from .broker_adapter import get_broker_adapter
 
         # Reload config with secrets
         config = load_config(config_path)

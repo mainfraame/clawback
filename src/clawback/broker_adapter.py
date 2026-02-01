@@ -232,7 +232,7 @@ def get_broker_adapter(config: Dict[str, Any]) -> BrokerAdapter:
     adapter_name = config.get('broker', {}).get('adapter', 'etrade').lower()
 
     if adapter_name == 'etrade':
-        from etrade_adapter import ETradeAdapter
+        from .etrade_adapter import ETradeAdapter
         return ETradeAdapter(config)
     # Add more adapters here as they are implemented:
     # elif adapter_name == 'schwab':

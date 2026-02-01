@@ -12,15 +12,12 @@ from zoneinfo import ZoneInfo
 import sys
 import os
 
-# Add src directory to path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
-from config_loader import load_config
-from broker_adapter import get_broker_adapter  # Broker adapter factory
-from congress_tracker import CongressTracker
-from trade_engine import TradeEngine
-from database import get_database, TradingDatabase
-from telegram_notifier import TelegramNotifier
+from .config_loader import load_config
+from .broker_adapter import get_broker_adapter
+from .congress_tracker import CongressTracker
+from .trade_engine import TradeEngine
+from .database import get_database, TradingDatabase
+from .telegram_notifier import TelegramNotifier
 
 # Configure logging
 def setup_logging(config):
