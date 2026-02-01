@@ -2,26 +2,24 @@
 name: clawback
 description: Mirror congressional stock trades with automated broker execution and risk management. Use when you want to track and automatically trade based on congressional disclosures from House Clerk and Senate eFD sources.
 version: 1.0.0
-author: dayne
+author: mainfraame
+homepage: https://github.com/mainfraame/clawback
+user-invocable: true
 metadata:
   openclaw:
+    emoji: "🦀"
     requires:
       bins:
         - python3
-      packages:
-        - pdfplumber
-        - selenium
-        - yfinance
-        - schedule
-        - python-dotenv
+        - pip
+    env:
+      - BROKER_API_KEY
+      - BROKER_API_SECRET
     config:
-      - ETRADE_API_KEY
-      - ETRADE_API_SECRET
-      - ETRADE_ACCOUNT_ID
-    optional_config:
-      - TELEGRAM_BOT_TOKEN
-      - TELEGRAM_CHAT_ID
-      - FMP_API_KEY
+      - skills.entries.clawback.enabled
+    install:
+      pip: clawback
+    primaryEnv: BROKER_API_KEY
 ---
 
 # ClawBack
@@ -52,21 +50,27 @@ Congressional leaders have outperformed the S&P 500 by 47% annually according to
 ## Quick Start
 
 ```bash
-# Clone and setup
-git clone https://github.com/openclaw/clawback
+# Install from PyPI
+pip install clawback
+
+# Run setup wizard (credentials, auth, account selection, Telegram)
+clawback setup
+
+# Start the trading bot
+clawback run
+```
+
+### Alternative: Install from ClawHub
+
+```bash
+# Install via ClawHub
+clawhub install clawback
+
+# Or install from source
+git clone https://github.com/mainfraame/clawback
 cd clawback
-python3 -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
-
-# Configure secrets
-python3 src/config_loader.py setup
-
-# Authenticate with broker
-python3 src/main.py interactive
-# Select option 1 to authenticate
-
-# Set up automation
-./scripts/setup_cron.sh
+pip install -e .
+clawback setup
 ```
 
 ## Configuration
@@ -142,51 +146,50 @@ Edit `config/config.json` to customize:
 ## Commands
 
 ```bash
-# Interactive mode
-python3 src/main.py interactive
+# Run setup wizard
+clawback setup
 
-# Single check cycle
-python3 src/main.py run
+# Start interactive trading mode
+clawback run
 
-# Scheduled trading
-python3 src/main.py schedule 24
+# Run as background daemon (with token refresh)
+clawback daemon
 
-# Run backtest
-python3 src/backtester.py
+# Check system status
+clawback status
+
+# Test Telegram notifications
+clawback test
 ```
 
-## Cron Automation
+## Automated Trading
 
-```bash
-# Install cron jobs
-./scripts/setup_cron.sh
-
-# Manual runs
-./scripts/run_bot.sh check    # Check for new trades
-./scripts/run_bot.sh monitor  # Check stop-losses
-./scripts/run_bot.sh full     # Both
-```
+The `clawback daemon` command runs continuously with:
+- **Disclosure checks** at 10:00, 14:00, 18:00 ET (when filings are typically released)
+- **Trade execution** at 9:35 AM ET (5 min after market open)
+- **Token refresh** every 90 minutes (keeps broker session alive)
+- **Market hours enforcement** (9:30 AM - 4:00 PM ET)
 
 ## Architecture
 
 ```
 clawback/
-├── src/
-│   ├── main.py              # Main entry point
+├── src/clawback/
+│   ├── cli.py               # CLI entry point (clawback command)
+│   ├── main.py              # Trading bot controller
 │   ├── congress_tracker.py  # Congressional data collection
 │   ├── trade_engine.py      # Trade execution & risk management
 │   ├── broker_adapter.py    # Abstract broker interface
 │   ├── etrade_adapter.py    # E*TRADE broker implementation
-│   ├── database.py          # SQLite state management
+│   ├── database.py          # SQLite state management (incl. tokens)
+│   ├── telegram_notifier.py # Telegram notifications
 │   └── config_loader.py     # Configuration handling
-├── config/
-│   ├── config.json          # Main configuration
-│   └── secrets.json         # API keys (git-ignored)
-├── scripts/
-│   ├── run_bot.sh           # Cron runner
-│   └── setup_cron.sh        # Cron installer
-└── data/
-    └── trading.db           # SQLite database
+├── pyproject.toml           # Python package configuration
+├── SKILL.md                 # OpenClaw skill definition
+└── ~/.clawback/             # User config directory
+    ├── config.json          # Main configuration
+    ├── secrets.json         # API keys
+    └── data/trading.db      # SQLite database
 ```
 
 ## Risk Disclaimer
@@ -199,4 +202,4 @@ MIT License - See LICENSE file
 
 ---
 
-*Built with ClawBack for the OpenClaw community*
+*Built for the OpenClaw community. Install via `clawhub install clawback` or `pip install clawback`.*
