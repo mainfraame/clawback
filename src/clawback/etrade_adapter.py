@@ -150,6 +150,71 @@ class ETradeAdapter(BrokerAdapter):
             logger.error(f"Error during authentication: {e}")
             return False
 
+    def renew_access_token(self) -> bool:
+        """
+        Renew the access token to extend its validity.
+
+        E*TRADE access tokens expire after 2 hours of inactivity.
+        Calling this endpoint extends the token's validity.
+        Tokens expire completely at midnight ET regardless of renewal.
+
+        Returns:
+            True if renewal successful, False otherwise
+        """
+        if not self.access_token or not self.access_secret:
+            logger.warning("Cannot renew: no access token available")
+            return False
+
+        try:
+            oauth = self._get_oauth()
+            renew_url = f"{self.BASE_URL}/oauth/renew_access_token"
+
+            response = requests.get(renew_url, auth=oauth)
+
+            if response.status_code == 200:
+                logger.info("Successfully renewed E*TRADE access token")
+                return True
+            else:
+                logger.warning(f"Token renewal failed: {response.status_code} - {response.text}")
+                self._notify_error("Token Renewal", f"HTTP {response.status_code}",
+                                   {"response": response.text[:200]})
+                return False
+
+        except Exception as e:
+            logger.error(f"Error renewing access token: {e}")
+            self._notify_error("Token Renewal", str(e))
+            return False
+
+    def revoke_access_token(self) -> bool:
+        """
+        Revoke the current access token.
+
+        Returns:
+            True if revocation successful, False otherwise
+        """
+        if not self.access_token or not self.access_secret:
+            return True  # Already revoked
+
+        try:
+            oauth = self._get_oauth()
+            revoke_url = f"{self.BASE_URL}/oauth/revoke_access_token"
+
+            response = requests.get(revoke_url, auth=oauth)
+
+            if response.status_code == 200:
+                logger.info("Successfully revoked E*TRADE access token")
+                self.access_token = None
+                self.access_secret = None
+                self._authenticated = False
+                return True
+            else:
+                logger.warning(f"Token revocation failed: {response.status_code}")
+                return False
+
+        except Exception as e:
+            logger.error(f"Error revoking access token: {e}")
+            return False
+
     def get_accounts(self) -> List[Dict[str, Any]]:
         """Get list of accounts available for trading."""
         try:

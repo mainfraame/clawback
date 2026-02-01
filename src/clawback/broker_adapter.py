@@ -87,6 +87,51 @@ class BrokerAdapter(ABC):
         """
         pass
 
+    def renew_access_token(self) -> bool:
+        """
+        Renew/refresh the access token to extend its validity.
+
+        Not all brokers support token renewal. Default implementation
+        returns False. Override in broker-specific adapters if supported.
+
+        Returns:
+            True if renewal successful, False otherwise
+        """
+        return False
+
+    def revoke_access_token(self) -> bool:
+        """
+        Revoke the current access token (logout).
+
+        Returns:
+            True if revocation successful, False otherwise
+        """
+        return False
+
+    def set_tokens(self, access_token: str, access_secret: str = None):
+        """
+        Set access tokens directly (e.g., loaded from database).
+
+        Args:
+            access_token: The OAuth access token
+            access_secret: The OAuth access secret (for OAuth1)
+        """
+        self.access_token = access_token
+        self.access_secret = access_secret
+        self._authenticated = True
+
+    def get_tokens(self) -> Dict[str, str]:
+        """
+        Get current access tokens.
+
+        Returns:
+            Dict with access_token and access_secret
+        """
+        return {
+            'access_token': getattr(self, 'access_token', None),
+            'access_secret': getattr(self, 'access_secret', None)
+        }
+
     @abstractmethod
     def get_accounts(self) -> List[Dict[str, Any]]:
         """

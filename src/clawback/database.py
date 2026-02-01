@@ -91,11 +91,27 @@ class TradingDatabase:
                     FOREIGN KEY (trade_id) REFERENCES executed_trades(id)
                 );
 
+                -- Broker authentication tokens
+                CREATE TABLE IF NOT EXISTS broker_tokens (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    broker TEXT NOT NULL,
+                    account_id TEXT,
+                    access_token TEXT NOT NULL,
+                    access_secret TEXT,
+                    refresh_token TEXT,
+                    token_type TEXT DEFAULT 'oauth1',
+                    expires_at TIMESTAMP,
+                    last_refreshed TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(broker, account_id)
+                );
+
                 -- Create indexes for common queries
                 CREATE INDEX IF NOT EXISTS idx_trades_ticker ON congressional_trades(ticker);
                 CREATE INDEX IF NOT EXISTS idx_trades_date ON congressional_trades(disclosure_date);
                 CREATE INDEX IF NOT EXISTS idx_trades_processed ON congressional_trades(processed);
                 CREATE INDEX IF NOT EXISTS idx_executed_ticker ON executed_trades(ticker);
+                CREATE INDEX IF NOT EXISTS idx_tokens_broker ON broker_tokens(broker);
             """)
             conn.commit()
 
@@ -380,6 +396,75 @@ class TradingDatabase:
                 LIMIT ?
             """, (limit,))
             return [dict(row) for row in cursor.fetchall()]
+
+    # --- Broker Tokens ---
+
+    def save_broker_tokens(self, broker: str, access_token: str, access_secret: str = None,
+                           refresh_token: str = None, account_id: str = None,
+                           expires_at: datetime = None):
+        """Save or update broker authentication tokens"""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute("""
+                INSERT INTO broker_tokens
+                    (broker, account_id, access_token, access_secret, refresh_token, expires_at, last_refreshed)
+                VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(broker, account_id) DO UPDATE SET
+                    access_token = excluded.access_token,
+                    access_secret = excluded.access_secret,
+                    refresh_token = COALESCE(excluded.refresh_token, refresh_token),
+                    expires_at = excluded.expires_at,
+                    last_refreshed = CURRENT_TIMESTAMP
+            """, (broker, account_id or '', access_token, access_secret, refresh_token,
+                  expires_at.isoformat() if expires_at else None))
+            conn.commit()
+            logger.debug(f"Saved tokens for {broker}")
+
+    def get_broker_tokens(self, broker: str, account_id: str = None):
+        """Retrieve broker tokens"""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute("""
+                SELECT * FROM broker_tokens
+                WHERE broker = ? AND account_id = ?
+            """, (broker, account_id or ''))
+            row = cursor.fetchone()
+            if row:
+                result = dict(row)
+                # Parse expires_at back to datetime if present
+                if result.get('expires_at'):
+                    try:
+                        result['expires_at'] = datetime.fromisoformat(result['expires_at'])
+                    except:
+                        pass
+                return result
+            return None
+
+    def delete_broker_tokens(self, broker: str, account_id: str = None):
+        """Delete broker tokens (for logout/revoke)"""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute("""
+                DELETE FROM broker_tokens
+                WHERE broker = ? AND account_id = ?
+            """, (broker, account_id or ''))
+            conn.commit()
+            logger.info(f"Deleted tokens for {broker}")
+
+    def get_all_broker_tokens(self):
+        """Get all stored broker tokens (for refresh job)"""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute("SELECT * FROM broker_tokens")
+            return [dict(row) for row in cursor.fetchall()]
+
+    def update_token_refresh_time(self, broker: str, account_id: str = None):
+        """Update the last_refreshed timestamp"""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute("""
+                UPDATE broker_tokens
+                SET last_refreshed = CURRENT_TIMESTAMP
+                WHERE broker = ? AND account_id = ?
+            """, (broker, account_id or ''))
+            conn.commit()
 
     # --- Utility ---
 

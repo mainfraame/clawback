@@ -101,22 +101,77 @@ class TradingBot:
         return datetime.now().astimezone().strftime('%Y-%m-%d %H:%M:%S %Z')
 
     def _load_saved_tokens(self):
-        """Load saved access tokens if available"""
+        """Load saved access tokens from database or file"""
+        # First try database
+        account_id = self.config.get('trading', {}).get('accountId', '')
+        db_tokens = self.db.get_broker_tokens(self.broker.BROKER_NAME, account_id)
+
+        if db_tokens and db_tokens.get('access_token'):
+            self.broker.set_tokens(
+                db_tokens['access_token'],
+                db_tokens.get('access_secret')
+            )
+            self.logger.info("Loaded access tokens from database")
+            return
+
+        # Fallback to JSON file (for migration)
         token_file = '.access_tokens.json'
         if os.path.exists(token_file):
             try:
                 with open(token_file, 'r') as f:
                     tokens = json.load(f)
-                # Set tokens on the adapter if it supports them
-                if hasattr(self.broker, 'access_token'):
-                    self.broker.access_token = tokens.get('access_token')
-                if hasattr(self.broker, 'access_secret'):
-                    self.broker.access_secret = tokens.get('access_secret')
-                if hasattr(self.broker, '_authenticated') and tokens.get('access_token'):
-                    self.broker._authenticated = True
-                self.logger.info("Loaded saved access tokens")
+                if tokens.get('access_token'):
+                    self.broker.set_tokens(
+                        tokens['access_token'],
+                        tokens.get('access_secret')
+                    )
+                    # Migrate to database
+                    self._save_tokens_to_db()
+                    self.logger.info("Loaded and migrated access tokens from file to database")
             except Exception as e:
                 self.logger.warning(f"Could not load saved tokens: {e}")
+
+    def _save_tokens_to_db(self):
+        """Save current broker tokens to database"""
+        try:
+            tokens = self.broker.get_tokens()
+            if tokens.get('access_token'):
+                account_id = self.config.get('trading', {}).get('accountId', '')
+                self.db.save_broker_tokens(
+                    broker=self.broker.BROKER_NAME,
+                    access_token=tokens['access_token'],
+                    access_secret=tokens.get('access_secret'),
+                    account_id=account_id
+                )
+                self.logger.debug("Saved tokens to database")
+        except Exception as e:
+            self.logger.warning(f"Could not save tokens to database: {e}")
+
+    def refresh_broker_tokens(self):
+        """Refresh broker access tokens to keep session alive"""
+        if not self.broker.is_authenticated:
+            self.logger.debug("Skipping token refresh - not authenticated")
+            return False
+
+        try:
+            self.logger.info("Refreshing broker access token...")
+            if self.broker.renew_access_token():
+                # Update refresh timestamp in database
+                account_id = self.config.get('trading', {}).get('accountId', '')
+                self.db.update_token_refresh_time(self.broker.BROKER_NAME, account_id)
+                self.logger.info("Successfully refreshed broker token")
+                return True
+            else:
+                self.logger.warning("Token refresh failed - may need to re-authenticate")
+                self.notifier.send_error_alert(
+                    "Token Refresh Failed",
+                    "Broker access token could not be renewed. Re-authentication may be required.",
+                    f"Broker: {self.broker.BROKER_NAME}"
+                )
+                return False
+        except Exception as e:
+            self.logger.error(f"Error refreshing token: {e}")
+            return False
     
     def authenticate(self, verifier_code=None):
         """Authenticate with broker"""
@@ -140,6 +195,10 @@ class TradingBot:
         success = self.broker.authenticate(verifier_code)
 
         if success:
+            # Save tokens to database for persistence
+            self._save_tokens_to_db()
+            self.logger.info("Access tokens saved to database")
+
             # Get accounts
             accounts = self.broker.get_accounts()
             if accounts:
@@ -322,6 +381,10 @@ class TradingBot:
         market_open_local = self._et_to_local_time("09:35")
         schedule.every().day.at(market_open_local).do(self.execute_pending_trades)
         self.logger.info(f"  Scheduled market open execution at {market_open_local} local (09:35 ET)")
+
+        # Schedule token refresh every 90 minutes (tokens expire after 2 hours of inactivity)
+        schedule.every(90).minutes.do(self.refresh_broker_tokens)
+        self.logger.info("  Scheduled token refresh every 90 minutes")
 
         # Run initial check
         self.check_for_new_disclosures()
