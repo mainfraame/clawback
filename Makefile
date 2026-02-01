@@ -5,8 +5,10 @@
 
 # Default registry (use www to avoid redirect issues)
 CLAWHUB_REGISTRY ?= https://www.clawhub.ai
-VERSION := $(shell cat VERSION 2>/dev/null || echo "0.0.0")
 SKILL_SLUG := clawback
+
+# Read version dynamically (not cached)
+version = $(shell cat VERSION 2>/dev/null || echo "0.0.0")
 
 # Colors for output
 CYAN := \033[0;36m
@@ -19,15 +21,15 @@ help: ## Show this help message
 	@echo ""
 	@echo "$(CYAN)ClawBack - OpenClaw Skill$(NC)"
 	@echo "$(CYAN)=========================$(NC)"
-	@echo "Current version: $(GREEN)$(VERSION)$(NC)"
+	@echo "Current version: $(GREEN)$(version)$(NC)"
 	@echo ""
 	@echo "$(YELLOW)Usage:$(NC)"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(CYAN)%-15s$(NC) %s\n", $$1, $$2}'
 	@echo ""
-	@echo "$(YELLOW)Release workflow:$(NC)"
-	@echo "  1. make bump-patch    # or bump-minor, bump-major"
-	@echo "  2. make release       # commit, tag, and push"
-	@echo "  3. make publish       # publish to ClawHub"
+	@echo "$(YELLOW)Release workflow (one command):$(NC)"
+	@echo "  make ship-patch    # bump, commit, tag, push, publish"
+	@echo "  make ship-minor"
+	@echo "  make ship-major"
 	@echo ""
 
 # ============================================================================
@@ -78,51 +80,46 @@ clean: ## Clean build artifacts
 # ============================================================================
 
 version: ## Show current version
-	@echo "$(VERSION)"
+	@echo "$(version)"
 
 bump-patch: ## Bump patch version (0.0.X)
-	@echo "$(CYAN)Bumping patch version...$(NC)"
 	@chmod +x scripts/bump-version.sh
 	@./scripts/bump-version.sh patch
-	@echo "$(GREEN)Version bumped to $$(cat VERSION)$(NC)"
 
 bump-minor: ## Bump minor version (0.X.0)
-	@echo "$(CYAN)Bumping minor version...$(NC)"
 	@chmod +x scripts/bump-version.sh
 	@./scripts/bump-version.sh minor
-	@echo "$(GREEN)Version bumped to $$(cat VERSION)$(NC)"
 
 bump-major: ## Bump major version (X.0.0)
-	@echo "$(CYAN)Bumping major version...$(NC)"
 	@chmod +x scripts/bump-version.sh
 	@./scripts/bump-version.sh major
-	@echo "$(GREEN)Version bumped to $$(cat VERSION)$(NC)"
 
 # ============================================================================
 # Release & Publishing
 # ============================================================================
 
 release: ## Commit version bump, create tag, and push
-	@echo "$(CYAN)Creating release v$(VERSION)...$(NC)"
+	@echo "$(CYAN)Creating release v$(version)...$(NC)"
 	@if [ -z "$$(git status --porcelain)" ]; then \
 		echo "$(YELLOW)No changes to commit$(NC)"; \
 	else \
-		git add VERSION pyproject.toml setup.py SKILL.md CHANGELOG.md; \
-		git commit -m "chore(release): bump version to $(VERSION)"; \
-		echo "$(GREEN)Committed version $(VERSION)$(NC)"; \
+		git add -A; \
+		git commit -m "chore(release): bump version to $(version)"; \
+		echo "$(GREEN)Committed version $(version)$(NC)"; \
 	fi
-	@if git tag | grep -q "^v$(VERSION)$$"; then \
-		echo "$(YELLOW)Tag v$(VERSION) already exists$(NC)"; \
-	else \
-		git tag -a "v$(VERSION)" -m "Release v$(VERSION)"; \
-		echo "$(GREEN)Created tag v$(VERSION)$(NC)"; \
+	@if git tag | grep -q "^v$(version)$$"; then \
+		echo "$(YELLOW)Tag v$(version) already exists, deleting...$(NC)"; \
+		git tag -d "v$(version)"; \
+		git push origin --delete "v$(version)" 2>/dev/null || true; \
 	fi
+	@git tag -a "v$(version)" -m "Release v$(version)"
+	@echo "$(GREEN)Created tag v$(version)$(NC)"
 	@git push origin main --tags
 	@echo "$(GREEN)Pushed to origin$(NC)"
 
 publish: ## Publish to ClawHub
 	@echo "$(CYAN)Publishing to ClawHub...$(NC)"
-	@echo "Version: $(VERSION)"
+	@echo "Version: $(version)"
 	@echo "Registry: $(CLAWHUB_REGISTRY)"
 	@echo ""
 	@# Copy to OpenClaw workspace (ClawHub looks there)
@@ -133,12 +130,12 @@ publish: ## Publish to ClawHub
 	@echo "Copied to ~/.openclaw/workspace/skills/$(SKILL_SLUG)"
 	clawhub publish ~/.openclaw/workspace/skills/$(SKILL_SLUG) \
 		--slug $(SKILL_SLUG) \
-		--version $(VERSION) \
-		--changelog "Release v$(VERSION)" \
+		--version $(version) \
+		--changelog "Release v$(version)" \
 		--tags latest \
 		--registry $(CLAWHUB_REGISTRY)
 	@echo ""
-	@echo "$(GREEN)Published $(SKILL_SLUG)@$(VERSION) to ClawHub!$(NC)"
+	@echo "$(GREEN)Published $(SKILL_SLUG)@$(version) to ClawHub!$(NC)"
 
 publish-dry: ## Dry run of publish (show what would happen)
 	@echo "$(CYAN)Publish dry run...$(NC)"
@@ -146,7 +143,7 @@ publish-dry: ## Dry run of publish (show what would happen)
 	@echo "Would run:"
 	@echo "  clawhub publish . \\"
 	@echo "    --slug $(SKILL_SLUG) \\"
-	@echo "    --version $(VERSION) \\"
+	@echo "    --version $(version) \\"
 	@echo "    --tags latest \\"
 	@echo "    --registry $(CLAWHUB_REGISTRY)"
 	@echo ""
@@ -154,23 +151,107 @@ publish-dry: ## Dry run of publish (show what would happen)
 	@find . -type f -not -path './.git/*' -not -path './venv/*' | sort
 
 # ============================================================================
-# Combined Commands
+# Combined Commands (Ship = bump + release + publish)
 # ============================================================================
 
-release-patch: bump-patch release ## Bump patch, commit, tag, push
-	@echo "$(GREEN)Released patch version$(NC)"
+ship-patch: ## Bump patch, commit, tag, push, publish - ALL IN ONE
+	@echo "$(CYAN)========================================$(NC)"
+	@echo "$(CYAN)  Shipping patch release$(NC)"
+	@echo "$(CYAN)========================================$(NC)"
+	@chmod +x scripts/bump-version.sh
+	@./scripts/bump-version.sh patch
+	@echo ""
+	@NEW_VER=$$(cat VERSION); \
+	echo "$(CYAN)Committing v$$NEW_VER...$(NC)"; \
+	git add -A; \
+	git commit -m "chore(release): bump version to $$NEW_VER"; \
+	echo "$(CYAN)Tagging v$$NEW_VER...$(NC)"; \
+	git tag -d "v$$NEW_VER" 2>/dev/null || true; \
+	git push origin --delete "v$$NEW_VER" 2>/dev/null || true; \
+	git tag -a "v$$NEW_VER" -m "Release v$$NEW_VER"; \
+	echo "$(CYAN)Pushing to origin...$(NC)"; \
+	git push origin main --tags; \
+	echo ""; \
+	echo "$(CYAN)Publishing to ClawHub...$(NC)"; \
+	rm -rf ~/.openclaw/workspace/skills/$(SKILL_SLUG); \
+	mkdir -p ~/.openclaw/workspace/skills; \
+	cp -r . ~/.openclaw/workspace/skills/$(SKILL_SLUG); \
+	rm -rf ~/.openclaw/workspace/skills/$(SKILL_SLUG)/.git; \
+	clawhub publish ~/.openclaw/workspace/skills/$(SKILL_SLUG) \
+		--slug $(SKILL_SLUG) \
+		--version $$NEW_VER \
+		--changelog "Release v$$NEW_VER" \
+		--tags latest \
+		--registry $(CLAWHUB_REGISTRY); \
+	echo ""; \
+	echo "$(GREEN)========================================$(NC)"; \
+	echo "$(GREEN)  Shipped $(SKILL_SLUG)@$$NEW_VER$(NC)"; \
+	echo "$(GREEN)========================================$(NC)"
 
-release-minor: bump-minor release ## Bump minor, commit, tag, push
-	@echo "$(GREEN)Released minor version$(NC)"
+ship-minor: ## Bump minor, commit, tag, push, publish - ALL IN ONE
+	@echo "$(CYAN)========================================$(NC)"
+	@echo "$(CYAN)  Shipping minor release$(NC)"
+	@echo "$(CYAN)========================================$(NC)"
+	@chmod +x scripts/bump-version.sh
+	@./scripts/bump-version.sh minor
+	@echo ""
+	@NEW_VER=$$(cat VERSION); \
+	echo "$(CYAN)Committing v$$NEW_VER...$(NC)"; \
+	git add -A; \
+	git commit -m "chore(release): bump version to $$NEW_VER"; \
+	echo "$(CYAN)Tagging v$$NEW_VER...$(NC)"; \
+	git tag -d "v$$NEW_VER" 2>/dev/null || true; \
+	git push origin --delete "v$$NEW_VER" 2>/dev/null || true; \
+	git tag -a "v$$NEW_VER" -m "Release v$$NEW_VER"; \
+	echo "$(CYAN)Pushing to origin...$(NC)"; \
+	git push origin main --tags; \
+	echo ""; \
+	echo "$(CYAN)Publishing to ClawHub...$(NC)"; \
+	rm -rf ~/.openclaw/workspace/skills/$(SKILL_SLUG); \
+	mkdir -p ~/.openclaw/workspace/skills; \
+	cp -r . ~/.openclaw/workspace/skills/$(SKILL_SLUG); \
+	rm -rf ~/.openclaw/workspace/skills/$(SKILL_SLUG)/.git; \
+	clawhub publish ~/.openclaw/workspace/skills/$(SKILL_SLUG) \
+		--slug $(SKILL_SLUG) \
+		--version $$NEW_VER \
+		--changelog "Release v$$NEW_VER" \
+		--tags latest \
+		--registry $(CLAWHUB_REGISTRY); \
+	echo ""; \
+	echo "$(GREEN)========================================$(NC)"; \
+	echo "$(GREEN)  Shipped $(SKILL_SLUG)@$$NEW_VER$(NC)"; \
+	echo "$(GREEN)========================================$(NC)"
 
-release-major: bump-major release ## Bump major, commit, tag, push
-	@echo "$(GREEN)Released major version$(NC)"
-
-ship-patch: release-patch publish ## Bump patch and publish to ClawHub
-	@echo "$(GREEN)Shipped patch release!$(NC)"
-
-ship-minor: release-minor publish ## Bump minor and publish to ClawHub
-	@echo "$(GREEN)Shipped minor release!$(NC)"
-
-ship-major: release-major publish ## Bump major and publish to ClawHub
-	@echo "$(GREEN)Shipped major release!$(NC)"
+ship-major: ## Bump major, commit, tag, push, publish - ALL IN ONE
+	@echo "$(CYAN)========================================$(NC)"
+	@echo "$(CYAN)  Shipping major release$(NC)"
+	@echo "$(CYAN)========================================$(NC)"
+	@chmod +x scripts/bump-version.sh
+	@./scripts/bump-version.sh major
+	@echo ""
+	@NEW_VER=$$(cat VERSION); \
+	echo "$(CYAN)Committing v$$NEW_VER...$(NC)"; \
+	git add -A; \
+	git commit -m "chore(release): bump version to $$NEW_VER"; \
+	echo "$(CYAN)Tagging v$$NEW_VER...$(NC)"; \
+	git tag -d "v$$NEW_VER" 2>/dev/null || true; \
+	git push origin --delete "v$$NEW_VER" 2>/dev/null || true; \
+	git tag -a "v$$NEW_VER" -m "Release v$$NEW_VER"; \
+	echo "$(CYAN)Pushing to origin...$(NC)"; \
+	git push origin main --tags; \
+	echo ""; \
+	echo "$(CYAN)Publishing to ClawHub...$(NC)"; \
+	rm -rf ~/.openclaw/workspace/skills/$(SKILL_SLUG); \
+	mkdir -p ~/.openclaw/workspace/skills; \
+	cp -r . ~/.openclaw/workspace/skills/$(SKILL_SLUG); \
+	rm -rf ~/.openclaw/workspace/skills/$(SKILL_SLUG)/.git; \
+	clawhub publish ~/.openclaw/workspace/skills/$(SKILL_SLUG) \
+		--slug $(SKILL_SLUG) \
+		--version $$NEW_VER \
+		--changelog "Release v$$NEW_VER" \
+		--tags latest \
+		--registry $(CLAWHUB_REGISTRY); \
+	echo ""; \
+	echo "$(GREEN)========================================$(NC)"; \
+	echo "$(GREEN)  Shipped $(SKILL_SLUG)@$$NEW_VER$(NC)"; \
+	echo "$(GREEN)========================================$(NC)"
