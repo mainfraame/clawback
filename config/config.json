@@ -70,7 +70,7 @@
     "telegram": {
       "enabled": true,
       "useOpenClaw": true,
-      "chatId": "8104237270",
+      "chatId": "${TELEGRAM_CHAT_ID}",
       "botToken": "${TELEGRAM_BOT_TOKEN}"
     }
   }

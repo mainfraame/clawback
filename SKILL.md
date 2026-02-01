@@ -92,7 +92,7 @@ ClawBack reads broker secrets from environment variables or `~/.clawback/secrets
 {
   "channels": {
     "telegram": {
-      "botToken": "8508571965:AAGLsPF...",
+      "botToken": "YOUR_BOT_TOKEN_FROM_BOTFATHER",
       "dmPolicy": "pairing"
     }
   }
