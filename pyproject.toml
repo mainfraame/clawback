@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "clawback"
-version = "1.0.3"
+version = "1.0.4"
 description = "Congressional Trade Mirror Bot - Automatically mirror congressional stock trades"
 readme = "README.md"
 license = {text = "MIT"}
