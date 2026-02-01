@@ -1,7 +1,7 @@
 ---
 name: clawback
-description: Mirror congressional stock trades with automated broker execution. Use /clawback setup to configure, or /clawback status to check.
-version: 1.1.0
+description: Mirror congressional stock trades with automated broker execution and risk management. Use when you want to track and automatically trade based on congressional disclosures from House Clerk and Senate eFD sources.
+version: 1.0.1
 author: mainfraame
 homepage: https://github.com/mainfraame/clawback
 user-invocable: true
@@ -12,95 +12,170 @@ metadata:
       bins:
         - python3
         - pip
+      config:
+        - channels.telegram.botToken
     install:
       pip: "{baseDir}"
+    primaryEnv: BROKER_API_KEY
 ---
 
-# ClawBack - Congressional Trade Mirror
+# ClawBack
 
-Track and mirror stock trades disclosed by members of Congress.
+**Mirror congressional stock trades with automated broker execution**
 
-## First-Time Setup
+ClawBack tracks stock trades disclosed by members of Congress (House and Senate) and executes scaled positions in your E*TRADE brokerage account. Built on the premise that congressional leaders consistently outperform the market due to informational advantages.
 
-When user says `/clawback setup` or asks to set up ClawBack:
+## Features
 
-1. **Install the CLI** (if not already installed):
-   ```bash
-   pip install ~/.openclaw/workspace/skills/clawback
-   ```
+- **Real-time disclosure tracking** from official House Clerk and Senate eFD sources
+- **Automated trade execution** via E*TRADE API (only supported broker)
+- **Smart position sizing** - scales trades to your account size
+- **Trailing stop-losses** - lock in profits, limit losses
+- **Risk management** - drawdown limits, consecutive loss protection
+- **Telegram notifications** - get alerts for new trades and stop-losses
+- **Backtesting engine** - test strategies on historical data
 
-2. **Run the setup wizard**:
-   ```bash
-   clawback setup
-   ```
-   This prompts for:
-   - E*TRADE API credentials (sandbox or production)
-   - OAuth authentication (opens browser)
-   - Account selection
-   - Telegram notification preferences
+## Performance (Backtest Results)
 
-3. **Add cron jobs for autonomous monitoring**:
-   ```bash
-   openclaw cron add --name "ClawBack Morning" --cron "0 10 * * 1-5" --tz "America/New_York" --session isolated --message "Run clawback status and report any new congressional disclosures"
-   openclaw cron add --name "ClawBack Afternoon" --cron "0 14 * * 1-5" --tz "America/New_York" --session isolated --message "Run clawback status and report any new congressional disclosures"
-   openclaw cron add --name "ClawBack Evening" --cron "0 18 * * 1-5" --tz "America/New_York" --session isolated --message "Run clawback status and summarize today's congressional trades"
-   ```
+| Strategy | Win Rate | Return | Sharpe |
+|----------|----------|--------|--------|
+| 3-day delay, 30-day hold | 42.9% | +6.2% | 0.39 |
+| 9-day delay, 90-day hold | 57.1% | +4.7% | 0.22 |
 
-4. **Confirm setup** by running:
-   ```bash
-   clawback status
-   ```
+Congressional leaders have outperformed the S&P 500 by 47% annually according to NBER research.
 
-## Commands
-
-| Command | Description |
-|---------|-------------|
-| `clawback setup` | Interactive setup wizard |
-| `clawback status` | Check system status and broker connection |
-| `clawback run` | Start interactive trading mode |
-| `clawback test` | Test Telegram notifications |
-
-## Checking for Disclosures
-
-When asked to check congressional trades or during scheduled cron runs:
+## Installation via ClawHub
 
 ```bash
-clawback status
+# Install from ClawHub registry
+clawhub install clawback
+
+# Or install from local directory
+clawhub install ./clawback
 ```
 
-This shows:
-- Broker connection status
-- Recent congressional disclosures
-- Pending trades
-- Account balance
+### Post-Installation Setup
 
-## Executing Trades
+After installation via ClawHub, the `install.sh` script runs automatically:
 
-ClawBack only executes during market hours (9:30 AM - 4:00 PM ET). When trades are pending:
+1. **Python Environment Setup** - Creates virtual environment
+2. **Package Installation** - Installs ClawBack via pip
+3. **Directory Structure** - Creates logs/, data/, config/ directories
+4. **Setup Prompt** - Asks if you want to run the setup wizard
+
+If you skip setup during installation, run it manually:
+```bash
+cd ~/.openclaw/skills/clawback
+./setup.sh          # Interactive setup wizard
+# or
+clawback setup      # CLI-based setup
+```
+
+### Improved Setup Features
+
+- **Better input handling** - Works in both interactive and non-interactive modes
+- **Input validation** - Validates E*TRADE API key formats
+- **Timeout handling** - Automatically uses defaults if no input
+- **Error recovery** - Fallback to manual setup if CLI fails
+- **Configuration check** - Detects existing config and offers options
+
+## Interactive Setup Wizard
+
+The setup wizard guides you through configuration:
+
+### Step 1: Environment Selection
+- **Sandbox** (recommended for testing): No real trades, uses E*TRADE developer sandbox
+- **Production**: Real trading with real money
+
+### Step 2: E*TRADE API Credentials
+- **Consumer Key**: From E*TRADE developer portal
+- **Consumer Secret**: From E*TRADE developer portal
+
+### Step 3: Authentication
+- Automatic OAuth flow with E*TRADE
+- Opens browser for authorization
+- Returns verification code
+
+### Step 4: Account Selection
+- Lists all available E*TRADE accounts
+- Choose which account to trade with
+
+### Step 5: Telegram Setup (Optional)
+- Configure notifications via Telegram bot
+- Uses OpenClaw's built-in Telegram channel if available
+
+## Environment Variables
+
+After setup, credentials are stored in `.env`:
 
 ```bash
-clawback run
+# E*TRADE API (required)
+BROKER_API_KEY=your_consumer_key_here
+BROKER_API_SECRET=your_consumer_secret_here
+BROKER_ACCOUNT_ID=your_account_id_here
+
+# Telegram (optional)
+TELEGRAM_BOT_TOKEN=your_bot_token_here
+TELEGRAM_CHAT_ID=your_chat_id_here
+
+# FMP API (optional)
+FMP_API_KEY=your_fmp_api_key_here
 ```
 
-Then select "Execute Pending Trades" from the menu.
+## Usage
 
-## Notifications
+```bash
+# Use the installed CLI command
+clawback run      # Start interactive trading mode
+clawback daemon   # Run as background service
+clawback status   # Check system status
+clawback setup    # Re-run setup wizard
+clawback test     # Test Telegram notifications
+```
 
-ClawBack sends Telegram alerts for:
-- New congressional disclosures
-- Trade executions
-- Broker errors
-- Token refresh failures
+## Automated Trading
 
-Notifications use OpenClaw's Telegram channel when available.
+The `clawback daemon` command runs continuously with:
+- **Disclosure checks** at 10:00, 14:00, 18:00 ET (when filings are typically released)
+- **Trade execution** at 9:35 AM ET (5 min after market open)
+- **Token refresh** every 90 minutes (keeps E*TRADE session alive)
+- **Market hours enforcement** (9:30 AM - 4:00 PM ET)
 
 ## Data Sources
 
-- **House Clerk**: disclosures-clerk.house.gov (PDF parsing)
-- **Senate eFD**: efdsearch.senate.gov (web scraping)
+- **House Clerk**: https://disclosures-clerk.house.gov (PDF parsing)
+- **Senate eFD**: https://efdsearch.senate.gov (web scraping)
+- **Financial Modeling Prep**: Enhanced financial data (optional)
 
-Checks run at 10 AM, 2 PM, and 6 PM ET on weekdays.
+## Supported Brokers
 
-## Risk Disclaimer
+ClawBack currently only supports E*TRADE. The adapter pattern allows for future broker support, but only E*TRADE is implemented and tested.
 
-Trading involves substantial risk. This is for educational purposes only. Past congressional trading performance doesn't guarantee future results.
+| Broker | Adapter | Status |
+|--------|---------|--------|
+| E*TRADE | `etrade_adapter.py` | Supported |
+
+## Risk Management
+
+- **Position limits**: 5% max per symbol, 20 positions max
+- **Stop-losses**: 8% per position, 15% portfolio drawdown
+- **Daily limits**: 3% max daily loss
+- **PDT compliance**: Conservative 2 trades/day limit
+
+## Security
+
+- No hardcoded credentials in source code
+- Environment variable based configuration
+- Encrypted token storage for E*TRADE
+- Git-ignored `.env` file
+- Optional production encryption
+
+## Support
+
+- **Documentation**: See README.md for detailed setup
+- **Issues**: https://github.com/mainfraame/clawback/issues
+- **Community**: https://discord.com/invite/clawd
+
+## Disclaimer
+
+**Trading involves substantial risk of loss.** This software is for educational purposes only. Past congressional trading performance does not guarantee future results. Always test with E*TRADE sandbox accounts before live trading.

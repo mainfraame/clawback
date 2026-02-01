@@ -165,13 +165,11 @@ python3 src/main.py interactive
 
 ## Supported Brokers
 
-ClawBack uses an adapter pattern for broker integration. Each broker implements the interface defined in `broker_adapter.py`.
+ClawBack uses an adapter pattern for broker integration. Currently only E*TRADE is supported.
 
 | Broker | Adapter | Status |
 |--------|---------|--------|
 | E*TRADE | `etrade_adapter.py` | Supported |
-| Schwab | `schwab_adapter.py` | Planned |
-| Fidelity | `fidelity_adapter.py` | Planned |
 
 ## Support & Troubleshooting
 - Check logs in `logs/` directory
@@ -181,6 +179,6 @@ ClawBack uses an adapter pattern for broker integration. Each broker implements 
 
 ---
 
-**Version**: 1.0.0
+**Version**: 1.0.1
 **Last Updated**: January 2026
 **Compatibility**: Python 3.8+

@@ -1,8 +1,8 @@
 {
   "name": "clawback",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Mirror congressional stock trades with automated broker execution and risk management",
-  "author": "dayne",
+  "author": "mainfraame",
   "license": "MIT",
   "keywords": [
     "openclaw",
@@ -14,12 +14,13 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/openclaw/clawback"
+    "url": "https://github.com/mainfraame/clawback"
   },
   "openclaw": {
     "skill": true,
     "category": "finance",
-    "emoji": "📊",
+    "emoji": "🦀",
+    "postinstall": "./install.sh",
     "requires": {
       "python": "3.8+",
       "packages": [
@@ -27,7 +28,8 @@
         "selenium",
         "yfinance",
         "schedule",
-        "python-dotenv"
+        "python-dotenv",
+        "requests-oauthlib"
       ]
     }
   }
