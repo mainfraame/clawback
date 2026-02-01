@@ -11,7 +11,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="clawback",
-    version="1.0.16",
+    version="1.1.0",
     author="Dayne",
     author_email="",
     description="Mirror congressional stock trades with automated broker execution",

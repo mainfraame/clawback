@@ -1,7 +1,7 @@
 ---
 name: clawback
 description: Mirror congressional stock trades with automated broker execution and risk management. Use when you want to track and automatically trade based on congressional disclosures from House Clerk and Senate eFD sources.
-version: 1.0.16
+version: 1.1.0
 author: mainfraame
 homepage: https://github.com/mainfraame/clawback
 user-invocable: true
@@ -117,6 +117,28 @@ If either is missing, suggest running `/clawback setup` first.
 ---
 
 ClawBack tracks stock trades disclosed by members of Congress (House and Senate) and executes scaled positions in your E*TRADE brokerage account. Built on the premise that congressional leaders consistently outperform the market due to informational advantages.
+
+## Default Target Politicians
+
+ClawBack monitors these politicians by default (configurable):
+
+| Politician | Chamber | Priority |
+|------------|---------|----------|
+| Nancy Pelosi | House | 1 (highest) |
+| Dan Crenshaw | House | 2 |
+| Tommy Tuberville | Senate | 2 |
+| Marjorie Taylor Greene | House | 3 |
+
+## Trading Strategy Defaults
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| Trade Delay | 3 days | Wait after disclosure before trading |
+| Holding Period | 30 days | Target hold time for positions |
+| Position Size | 5% | Max allocation per trade |
+| Stop-Loss | 8% | Per-position stop-loss |
+| Portfolio Drawdown | 15% | Max portfolio loss before halt |
+| Disclosure Checks | 10:00, 14:00, 18:00 ET | Daily check times |
 
 ## Features
 
@@ -254,6 +276,27 @@ ClawBack currently only supports E*TRADE. The adapter pattern allows for future 
 - **Stop-losses**: 8% per position, 15% portfolio drawdown
 - **Daily limits**: 3% max daily loss
 - **PDT compliance**: Conservative 2 trades/day limit
+
+## Authentication Helpers
+
+For manual E*TRADE authentication outside the main CLI:
+
+```bash
+# Standalone OAuth authentication script
+cd {baseDir}
+source venv/bin/activate
+python scripts/auth_script.py
+```
+
+This generates an authorization URL, prompts for the verification code, and completes authentication.
+
+## File Locations
+
+| File | Purpose |
+|------|---------|
+| `~/.clawback/config.json` | Main configuration |
+| `~/.clawback/.access_tokens.json` | E*TRADE OAuth tokens |
+| `~/.clawback/data/trading.db` | SQLite database |
 
 ## Security
 

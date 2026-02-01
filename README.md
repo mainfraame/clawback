@@ -3,7 +3,7 @@
 **Mirror congressional stock trades with automated broker execution**
 
 [![ClawHub](https://img.shields.io/badge/ClawHub-clawback-blue)](https://www.clawhub.ai/skills/clawback)
-[![Version](https://img.shields.io/badge/version-1.0.4-green)](https://github.com/mainfraame/clawback/releases)
+[![Version](https://img.shields.io/badge/version-1.1.0-green)](https://github.com/mainfraame/clawback/releases)
 [![Python](https://img.shields.io/badge/python-3.9+-blue)](https://python.org)
 
 ClawBack tracks stock trades disclosed by members of Congress and executes scaled positions in your brokerage account. Built on the premise that congressional leaders consistently outperform the market.
@@ -108,6 +108,23 @@ TELEGRAM_CHAT_ID=your_chat_id
 - **House Clerk**: https://disclosures-clerk.house.gov (PDF parsing)
 - **Senate eFD**: https://efdsearch.senate.gov (web scraping)
 
+## Default Tracked Politicians
+
+| Politician | Chamber | Priority |
+|------------|---------|----------|
+| Nancy Pelosi | House | 1 (highest) |
+| Dan Crenshaw | House | 2 |
+| Tommy Tuberville | Senate | 2 |
+| Marjorie Taylor Greene | House | 3 |
+
+## Trading Strategy
+
+| Parameter | Default |
+|-----------|---------|
+| Trade Delay | 3 days after disclosure |
+| Holding Period | 30 days |
+| Disclosure Checks | 10:00, 14:00, 18:00 ET |
+
 ## Risk Management
 
 | Control | Default |
@@ -118,23 +135,35 @@ TELEGRAM_CHAT_ID=your_chat_id
 | Portfolio stop-loss | 15% |
 | Position stop-loss | 8% |
 
+## Authentication Helpers
+
+For manual E*TRADE OAuth authentication:
+
+```bash
+# Standalone authentication script
+source venv/bin/activate
+python scripts/auth_script.py
+```
+
 ## Development
 
 ```bash
 # Show all make commands
 make help
 
+# Linting (required before release)
+make lint          # Run ruff linter
+make lint-fix      # Auto-fix issues
+
 # Version management
-make bump-patch    # 1.0.4 → 1.0.5
-make bump-minor    # 1.0.4 → 1.1.0
-make bump-major    # 1.0.4 → 2.0.0
+make bump-patch    # 1.0.x → 1.0.x+1
+make bump-minor    # 1.x.0 → 1.x+1.0
+make bump-major    # x.0.0 → x+1.0.0
 
-# Release workflow
-make release       # commit, tag, push
-make publish       # publish to ClawHub
-
-# All-in-one
-make ship-patch    # bump + release + publish
+# Release workflow (lint runs automatically)
+make ship-patch    # bump + lint + release + publish
+make ship-minor
+make ship-major
 ```
 
 ## Support
@@ -148,4 +177,4 @@ make ship-patch    # bump + release + publish
 
 ---
 
-**Version**: 1.0.4 | **License**: MIT | **Author**: [mainfraame](https://github.com/mainfraame)
+**Version**: 1.1.0 | **License**: MIT | **Author**: [mainfraame](https://github.com/mainfraame)
