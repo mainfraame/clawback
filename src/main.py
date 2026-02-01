@@ -364,7 +364,7 @@ class TradingBot:
             'account_id': self.broker.account_id,
             'trade_history_count': len(self.trade_engine.trade_history)
         }
-        
+
         # Add account balance if authenticated
         if status['authenticated']:
             balance = self.broker.get_account_balance()
@@ -373,8 +373,23 @@ class TradingBot:
                     'cash_available': balance['cash_available'],
                     'total_value': balance['total_value']
                 }
-        
+
         return status
+
+    def send_test_notification(self):
+        """Send a test notification with actual system state"""
+        account_balance = None
+
+        if self.broker.is_authenticated:
+            balance = self.broker.get_account_balance()
+            if balance:
+                account_balance = balance['total_value']
+
+        return self.notifier.send_test_message(
+            broker_name=self.broker.BROKER_NAME,
+            account_balance=account_balance,
+            is_authenticated=self.broker.is_authenticated
+        )
     
     def emergency_stop(self):
         """Emergency stop - cancel all pending orders and stop trading"""

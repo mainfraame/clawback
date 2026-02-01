@@ -29,9 +29,11 @@ def test_telegram():
     
     print("Testing Telegram notifications...")
     
-    # Test 1: Send test message
+    # Test 1: Send test message with broker info
     print("1. Sending test message...")
-    if notifier.send_test_message():
+    # Try to get broker name from config
+    broker_name = config.get('broker', {}).get('adapter', 'Unknown').upper()
+    if notifier.send_test_message(broker_name=broker_name, is_authenticated=False):
         print("   ✅ Test message sent successfully!")
     else:
         print("   ❌ Failed to send test message")

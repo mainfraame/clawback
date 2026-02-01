@@ -222,19 +222,32 @@ class TelegramNotifier:
         
         return self.send_message(message.strip())
     
-    def send_test_message(self):
-        """Send test message to verify setup"""
+    def send_test_message(self, broker_name=None, account_balance=None, is_authenticated=False):
+        """Send test message to verify setup with actual system state"""
+        # Format broker display name
+        broker_display = broker_name or "Not configured"
+
+        # Format account balance
+        if account_balance is not None:
+            balance_display = f"${account_balance:,.2f}"
+        else:
+            balance_display = "Not available"
+
+        # Format auth status
+        auth_status = "Authenticated ✓" if is_authenticated else "Not authenticated"
+
         message = f"""
-✅ *TRADING SYSTEM TEST* ✅
+✅ *CLAWBACK SYSTEM TEST* ✅
 
 *System:* ClawBack Congressional Trading Bot
-*Status:* Online and Ready
-*Account:* $50,000 Brokerage
+*Broker:* {broker_display}
+*Auth Status:* {auth_status}
+*Account Balance:* {balance_display}
 *Time:* {get_local_timestamp()}
 
-Test message successful! The system is ready to trade.
+{"System ready to trade!" if is_authenticated else "⚠️ Please authenticate before trading."}
 """
-        
+
         success = self.send_message(message.strip())
         if success:
             logger.info("Telegram test message sent successfully")
