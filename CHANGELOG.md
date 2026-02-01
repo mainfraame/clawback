@@ -2,8 +2,8 @@
 
 ## [1.0.16] - 2026-02-01
 
-### Changed
-- Version bump
+### Added
+- `scripts/auth_script.py` - Standalone E*TRADE OAuth authentication helper
 
 
 ## [1.0.15] - 2026-02-01
